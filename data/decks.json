@@ -1,0 +1,1795 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-10",
+  "decks": [
+    {
+      "id": "kz",
+      "cards": [],
+      "name": "Казахский",
+      "order": 1,
+      "parent": null,
+      "type": "kz"
+    },
+    {
+      "id": "en",
+      "cards": [],
+      "name": "Английский",
+      "order": 3,
+      "parent": null,
+      "type": "en"
+    },
+    {
+      "id": "en-nuet-ct",
+      "cards": [
+        {
+          "def": "something an argument takes for granted without stating it",
+          "id": "c01",
+          "ipa": "/əˈsʌmpʃn/",
+          "ru": "допущение, неявное предположение",
+          "sentences": [
+            "Which of the following is an underlying {assumption} of the argument above?",
+            "The plan rests on the {assumption} that prices will stay the same.",
+            "Her {assumption} that everyone had read the email turned out to be wrong."
+          ],
+          "word": "assumption"
+        },
+        {
+          "def": "the main point that an argument is trying to prove",
+          "id": "c02",
+          "ipa": "/kənˈkluːʒn/",
+          "ru": "вывод",
+          "sentences": [
+            "Which of the following best expresses the main {conclusion} of the argument?",
+            "The evidence does not support such a strong {conclusion}.",
+            "After weeks of testing, the scientists reached a surprising {conclusion}."
+          ],
+          "word": "conclusion"
+        },
+        {
+          "def": "to decide that something is true from the information you have",
+          "id": "c03",
+          "ipa": "/ɪnˈfɜː/",
+          "ru": "делать вывод, заключать",
+          "sentences": [
+            "Which of the following can be reliably {inferred} from the passage?",
+            "From his silence, I {inferred} that he disagreed.",
+            "What can we {infer} about the author's opinion?"
+          ],
+          "word": "infer"
+        },
+        {
+          "def": "a mistake or weakness in reasoning",
+          "id": "c04",
+          "ipa": "/flɔː/",
+          "ru": "изъян, ошибка в рассуждении",
+          "sentences": [
+            "Which of the following identifies the {flaw} in the argument?",
+            "The main {flaw} in his plan is that it ignores the cost.",
+            "There is a serious {flaw} in this reasoning."
+          ],
+          "word": "flaw"
+        },
+        {
+          "def": "to make an argument less convincing",
+          "id": "c05",
+          "ipa": "/ˈwiːkən/",
+          "ru": "ослабить",
+          "sentences": [
+            "Which of the following, if true, would most {weaken} the argument?",
+            "This new evidence {weakens} the claim that the drug is safe.",
+            "One counterexample is enough to {weaken} a general rule."
+          ],
+          "word": "weaken"
+        },
+        {
+          "def": "to make an argument more convincing",
+          "id": "c06",
+          "ipa": "/ˈstreŋθn/",
+          "ru": "усилить, подкрепить",
+          "sentences": [
+            "Which of the following, if true, would most {strengthen} the argument?",
+            "The survey results {strengthen} her case.",
+            "More data would {strengthen} the conclusion."
+          ],
+          "word": "strengthen"
+        },
+        {
+          "def": "to make something weaker or less effective, often indirectly",
+          "id": "c07",
+          "ipa": "/ˌʌndəˈmaɪn/",
+          "ru": "подрывать",
+          "sentences": [
+            "The small sample size {undermines} the study's findings.",
+            "Constant criticism can {undermine} a student's confidence.",
+            "Which statement would most seriously {undermine} the author's reasoning?"
+          ],
+          "word": "undermine"
+        },
+        {
+          "def": "a statement that something is true, which may not be proven",
+          "id": "c08",
+          "ipa": "/kleɪm/",
+          "ru": "утверждение; утверждать",
+          "sentences": [
+            "The author's {claim} is not supported by any evidence.",
+            "Some companies {claim} that their products are eco-friendly.",
+            "Which of the following is a {claim} made in the passage?"
+          ],
+          "word": "claim"
+        },
+        {
+          "def": "facts that show whether something is true",
+          "id": "c09",
+          "ipa": "/ˈevɪdəns/",
+          "ru": "доказательства, данные",
+          "sentences": [
+            "There is no {evidence} that the new rule reduced accidents.",
+            "The {evidence} suggests a link between sleep and memory.",
+            "What {evidence} does the author give for this view?"
+          ],
+          "word": "evidence"
+        },
+        {
+          "def": "to suggest something without saying it directly",
+          "id": "c10",
+          "ipa": "/ɪmˈplaɪ/",
+          "ru": "подразумевать, намекать",
+          "sentences": [
+            "The author {implies} that the government acted too late.",
+            "Are you {implying} that I cheated?",
+            "What does the last sentence {imply}?"
+          ],
+          "word": "imply"
+        },
+        {
+          "def": "connected to what is being discussed",
+          "id": "c11",
+          "ipa": "/ˈreləvənt/",
+          "ru": "относящийся к делу",
+          "sentences": [
+            "Which piece of information is {relevant} to solving the problem?",
+            "His comment wasn't {relevant} to our discussion.",
+            "Only use the {relevant} data from the table."
+          ],
+          "word": "relevant"
+        },
+        {
+          "def": "a general rule that guides decisions or reasoning",
+          "id": "c12",
+          "ipa": "/ˈprɪnsəpl/",
+          "ru": "принцип",
+          "sentences": [
+            "Which of the following best illustrates the {principle} behind the argument?",
+            "It's against my {principles} to lie.",
+            "The same {principle} applies to both cases."
+          ],
+          "word": "principle"
+        },
+        {
+          "def": "in agreement with something; not contradicting it",
+          "id": "c13",
+          "ipa": "/kənˈsɪstənt/",
+          "ru": "согласующийся (с), не противоречащий",
+          "sentences": [
+            "The results are {consistent} with our hypothesis.",
+            "Her story was not {consistent} with the facts.",
+            "Which statement is {consistent} with the data in the graph?"
+          ],
+          "word": "consistent (with)"
+        },
+        {
+          "def": "to say or show the opposite of something",
+          "id": "c14",
+          "ipa": "/ˌkɒntrəˈdɪkt/",
+          "ru": "противоречить",
+          "sentences": [
+            "The second paragraph seems to {contradict} the first.",
+            "The new data {contradicts} earlier findings.",
+            "Try not to {contradict} yourself in the essay."
+          ],
+          "word": "contradict"
+        },
+        {
+          "def": "based on good reasoning; logically correct",
+          "id": "c15",
+          "ipa": "/ˈvælɪd/",
+          "ru": "обоснованный, логически верный",
+          "sentences": [
+            "Is this a {valid} conclusion from the evidence given?",
+            "She made a {valid} point about the costs.",
+            "The argument is {valid}, but one of its premises is false."
+          ],
+          "word": "valid"
+        },
+        {
+          "def": "a statement an argument uses as a reason for its conclusion",
+          "id": "c16",
+          "ipa": "/ˈpremɪs/",
+          "ru": "посылка (исходное утверждение)",
+          "sentences": [
+            "If both {premises} are true, the conclusion must also be true.",
+            "The argument is built on a false {premise}.",
+            "Identify the {premise} that supports the final claim."
+          ],
+          "word": "premise"
+        },
+        {
+          "def": "a connection between two things that change together",
+          "id": "c17",
+          "ipa": "/ˌkɒrəˈleɪʃn/",
+          "ru": "взаимосвязь, корреляция",
+          "sentences": [
+            "A {correlation} between two things does not prove that one causes the other.",
+            "The study found a strong {correlation} between exercise and mood.",
+            "Is there any {correlation} between screen time and grades?"
+          ],
+          "word": "correlation"
+        },
+        {
+          "def": "a statement about a whole group based on only some examples",
+          "id": "c18",
+          "ipa": "/ˌdʒenrəlaɪˈzeɪʃn/",
+          "ru": "обобщение",
+          "sentences": [
+            "The argument makes a hasty {generalisation} from a single case.",
+            "It is an unfair {generalisation} to say that all teenagers are lazy.",
+            "Be careful with {generalisations} based on small samples."
+          ],
+          "word": "generalisation"
+        },
+        {
+          "def": "seeming reasonable and likely to be true",
+          "id": "c19",
+          "ipa": "/ˈplɔːzəbl/",
+          "ru": "правдоподобный",
+          "sentences": [
+            "Which of the following is the most {plausible} explanation for the results?",
+            "His excuse sounded {plausible}, but I didn't believe it.",
+            "That is a {plausible} theory, but we need more evidence."
+          ],
+          "word": "plausible"
+        },
+        {
+          "def": "able to be trusted",
+          "id": "c20",
+          "ipa": "/rɪˈlaɪəbl/",
+          "ru": "надёжный, достоверный",
+          "sentences": [
+            "Is this website a {reliable} source of information?",
+            "The bus service here is not very {reliable}.",
+            "We need more {reliable} data before we decide."
+          ],
+          "word": "reliable"
+        },
+        {
+          "def": "used to compare two facts that are different",
+          "id": "c21",
+          "ipa": "/weərˈæz/",
+          "ru": "тогда как",
+          "sentences": [
+            "Tom likes maths, {whereas} his brother prefers history.",
+            "Some species thrive in cities, {whereas} others disappear.",
+            "The first plan is cheap, {whereas} the second is fast."
+          ],
+          "word": "whereas"
+        },
+        {
+          "def": "despite what has just been said",
+          "id": "c22",
+          "ipa": "/ˌnevəðəˈles/",
+          "ru": "тем не менее",
+          "sentences": [
+            "The test was difficult; {nevertheless}, most students passed.",
+            "It was raining, but we {nevertheless} went for a walk.",
+            "The plan is risky but {nevertheless} worth trying."
+          ],
+          "word": "nevertheless"
+        },
+        {
+          "def": "for this reason; as a result",
+          "id": "c23",
+          "ipa": "/hens/",
+          "ru": "поэтому, следовательно",
+          "sentences": [
+            "The road was closed, {hence} the delay.",
+            "Prices rose sharply; {hence}, fewer people could afford them.",
+            "The data is incomplete, and {hence} the conclusion is uncertain."
+          ],
+          "word": "hence"
+        },
+        {
+          "def": "only if",
+          "id": "c24",
+          "ipa": "/prəˈvaɪdɪd ðət/",
+          "ru": "при условии, что",
+          "sentences": [
+            "You can borrow the book {provided that} you return it by Friday.",
+            "The match will take place {provided that} the weather is good.",
+            "Anyone can join the club, {provided that} they attend every meeting."
+          ],
+          "word": "provided that"
+        },
+        {
+          "def": "correct in every detail",
+          "id": "c25",
+          "ipa": "/ˈækjərət/",
+          "ru": "точный",
+          "sentences": [
+            "Which of the following is an {accurate} description of the graph?",
+            "The thermometer gives an {accurate} reading.",
+            "His summary of the story was not quite {accurate}."
+          ],
+          "word": "accurate"
+        },
+        {
+          "def": "to explain the reason for something, or to form part of a total",
+          "id": "c26",
+          "ipa": "/əˈkaʊnt fɔː/",
+          "ru": "объяснять; составлять (долю)",
+          "sentences": [
+            "Which of the following would best {account for} the drop in sales?",
+            "Students {account for} almost half of the city's population.",
+            "How do you {account for} the difference between the two results?"
+          ],
+          "word": "account for"
+        },
+        {
+          "def": "to be more important or greater than something else",
+          "id": "c27",
+          "ipa": "/ˌaʊtˈweɪ/",
+          "ru": "перевешивать",
+          "sentences": [
+            "The benefits of the new law {outweigh} its costs.",
+            "Do the risks {outweigh} the advantages?",
+            "For me, the low price {outweighs} the long delivery time."
+          ],
+          "word": "outweigh"
+        },
+        {
+          "def": "enough for a particular purpose",
+          "id": "c28",
+          "ipa": "/səˈfɪʃnt/",
+          "ru": "достаточный",
+          "sentences": [
+            "Is the information given {sufficient} to answer the question?",
+            "Passing the test is necessary but not {sufficient} for admission.",
+            "There wasn't {sufficient} time to finish the essay."
+          ],
+          "word": "sufficient"
+        },
+        {
+          "def": "a reason for disagreeing with something",
+          "id": "c29",
+          "ipa": "/əbˈdʒekʃn/",
+          "ru": "возражение",
+          "sentences": [
+            "Which of the following is the strongest {objection} to the proposal?",
+            "Nobody raised any {objection} to the plan.",
+            "Her main {objection} was the high cost."
+          ],
+          "word": "objection"
+        },
+        {
+          "def": "an unfair preference that affects judgement",
+          "id": "c30",
+          "ipa": "/ˈbaɪəs/",
+          "ru": "предвзятость",
+          "sentences": [
+            "The survey may show {bias} because only fans were asked.",
+            "Try to write the essay without {bias}.",
+            "Is there any evidence of {bias} in the article?"
+          ],
+          "word": "bias"
+        },
+        {
+          "def": "large or important enough to have an effect",
+          "id": "c31",
+          "ipa": "/sɪɡˈnɪfɪkənt/",
+          "ru": "значительный, существенный",
+          "sentences": [
+            "There was a {significant} increase in prices last year.",
+            "The difference between the two groups is not {significant}.",
+            "This discovery is {significant} for medicine."
+          ],
+          "word": "significant"
+        },
+        {
+          "def": "a limit on what is possible",
+          "id": "c32",
+          "ipa": "/kənˈstreɪnt/",
+          "ru": "ограничение, условие",
+          "sentences": [
+            "Given these {constraints}, which timetable is possible?",
+            "Time is the main {constraint} on this project.",
+            "The budget {constraint} means we can only buy two laptops."
+          ],
+          "word": "constraint"
+        }
+      ],
+      "name": "NUET: аргументы и логика",
+      "order": 10,
+      "parent": "en",
+      "type": "en"
+    },
+    {
+      "id": "en-nuet-math",
+      "cards": [
+        {
+          "def": "a whole number that can be positive, negative or zero",
+          "id": "m01",
+          "ipa": "/ˈɪntɪdʒə/",
+          "ru": "целое число",
+          "sentences": [
+            "If n is a positive {integer}, which of the following must be even?",
+            "−3, 0 and 7 are all {integers}.",
+            "Find the smallest {integer} greater than 2.5."
+          ],
+          "word": "integer"
+        },
+        {
+          "def": "the amount left over after division",
+          "id": "m02",
+          "ipa": "/rɪˈmeɪndə/",
+          "ru": "остаток (при делении)",
+          "sentences": [
+            "When 17 is divided by 5, the {remainder} is 2.",
+            "What is the {remainder} when 100 is divided by 7?",
+            "A number leaves a {remainder} of 1 when divided by 4."
+          ],
+          "word": "remainder"
+        },
+        {
+          "def": "able to be divided by a number with no remainder",
+          "id": "m03",
+          "ipa": "/dɪˈvɪzəbl/",
+          "ru": "делящийся (на)",
+          "sentences": [
+            "Which of these numbers is {divisible} by 9?",
+            "A year is a leap year if it is {divisible} by 4, with some exceptions.",
+            "The sum of the digits is {divisible} by 3."
+          ],
+          "word": "divisible (by)"
+        },
+        {
+          "def": "a number that divides another number exactly",
+          "id": "m04",
+          "ipa": "/ˈfæktə/",
+          "ru": "делитель; множитель",
+          "sentences": [
+            "The {factors} of 12 are 1, 2, 3, 4, 6 and 12.",
+            "3 is a {factor} of 27.",
+            "Find the highest common {factor} of 18 and 24."
+          ],
+          "word": "factor"
+        },
+        {
+          "def": "a number that is the result of multiplying a number by an integer",
+          "id": "m05",
+          "ipa": "/ˈmʌltɪpl/",
+          "ru": "кратное",
+          "sentences": [
+            "15 and 30 are {multiples} of 5.",
+            "Find the least common {multiple} of 4 and 6.",
+            "How many {multiples} of 7 are there between 1 and 50?"
+          ],
+          "word": "multiple"
+        },
+        {
+          "def": "a number greater than 1 that divides only by 1 and itself",
+          "id": "m06",
+          "ipa": "/praɪm ˈnʌmbə/",
+          "ru": "простое число",
+          "sentences": [
+            "2 is the only even {prime number}.",
+            "Is 91 a {prime number}?",
+            "Every integer greater than 1 is either a {prime number} or a product of primes."
+          ],
+          "word": "prime number"
+        },
+        {
+          "def": "the number above the line in a fraction",
+          "id": "m07",
+          "ipa": "/ˈnjuːməreɪtə/",
+          "ru": "числитель",
+          "sentences": [
+            "In the fraction 3/4, the {numerator} is 3.",
+            "If you double the {numerator}, the fraction doubles.",
+            "The {numerator} and denominator have no common factor."
+          ],
+          "word": "numerator"
+        },
+        {
+          "def": "the number below the line in a fraction",
+          "id": "m08",
+          "ipa": "/dɪˈnɒmɪneɪtə/",
+          "ru": "знаменатель",
+          "sentences": [
+            "To add fractions, first find a common {denominator}.",
+            "In 5/8, the {denominator} is 8.",
+            "A fraction is undefined when its {denominator} is zero."
+          ],
+          "word": "denominator"
+        },
+        {
+          "def": "the result of dividing one number by another",
+          "id": "m09",
+          "ipa": "/ˈkwəʊʃnt/",
+          "ru": "частное",
+          "sentences": [
+            "The {quotient} of 20 and 4 is 5.",
+            "Find the {quotient} when x² − 1 is divided by x − 1.",
+            "The {quotient} is 12 and the remainder is 3."
+          ],
+          "word": "quotient"
+        },
+        {
+          "def": "the result of multiplying numbers",
+          "id": "m10",
+          "ipa": "/ˈprɒdʌkt/",
+          "ru": "произведение",
+          "sentences": [
+            "The {product} of two negative numbers is positive.",
+            "What is the {product} of 6 and 7?",
+            "The sum of two numbers is 10 and their {product} is 21."
+          ],
+          "word": "product"
+        },
+        {
+          "def": "the result of subtracting one number from another",
+          "id": "m11",
+          "ipa": "/ˈdɪfrəns/",
+          "ru": "разность",
+          "sentences": [
+            "The {difference} between 15 and 9 is 6.",
+            "The sum of two numbers is 20 and their {difference} is 4.",
+            "Find the positive {difference} between the two roots."
+          ],
+          "word": "difference"
+        },
+        {
+          "def": "the sum of the values divided by how many values there are",
+          "id": "m12",
+          "ipa": "/miːn/",
+          "ru": "среднее арифметическое",
+          "sentences": [
+            "The {mean} of 4, 6 and 11 is 7.",
+            "If the {mean} score of 5 students is 70, what is their total score?",
+            "Adding one very large value increases the {mean} a lot."
+          ],
+          "word": "mean"
+        },
+        {
+          "def": "the middle value when the numbers are put in order",
+          "id": "m13",
+          "ipa": "/ˈmiːdiən/",
+          "ru": "медиана",
+          "sentences": [
+            "The {median} of 3, 8, 9, 12 and 20 is 9.",
+            "The {median} is less affected by extreme values than the mean.",
+            "Find the {median} of the data in the table."
+          ],
+          "word": "median"
+        },
+        {
+          "def": "the difference between the largest and smallest values",
+          "id": "m14",
+          "ipa": "/reɪndʒ/",
+          "ru": "размах (разница между наибольшим и наименьшим)",
+          "sentences": [
+            "The {range} of 2, 7 and 15 is 13.",
+            "The temperatures had a {range} of 12 degrees that week.",
+            "Which data set has the largest {range}?"
+          ],
+          "word": "range"
+        },
+        {
+          "def": "a comparison of two amounts, such as 2 : 3",
+          "id": "m15",
+          "ipa": "/ˈreɪʃiəʊ/",
+          "ru": "отношение",
+          "sentences": [
+            "The {ratio} of boys to girls in the class is 3 : 4.",
+            "Divide 60 in the {ratio} 1 : 2.",
+            "The {ratio} of width to height is always the same."
+          ],
+          "word": "ratio"
+        },
+        {
+          "def": "a part of a whole, compared with the whole",
+          "id": "m16",
+          "ipa": "/prəˈpɔːʃn/",
+          "ru": "доля; пропорция",
+          "sentences": [
+            "What {proportion} of the students passed the test?",
+            "The {proportion} of adults who smoke has fallen.",
+            "A large {proportion} of the budget goes on salaries."
+          ],
+          "word": "proportion"
+        },
+        {
+          "def": "the difference between two percentages: from 20% to 25% is 5 of these",
+          "id": "m17",
+          "ipa": "/pəˈsentɪdʒ pɔɪnt/",
+          "ru": "процентный пункт",
+          "sentences": [
+            "Unemployment rose from 5% to 7%, an increase of two {percentage points}.",
+            "The party's support fell by three {percentage points}.",
+            "A rise from 10% to 15% is five {percentage points}, but a 50% increase."
+          ],
+          "word": "percentage point"
+        },
+        {
+          "def": "when one quantity doubles, the other halves",
+          "id": "m18",
+          "ipa": "/ɪnˈvɜːsli prəˈpɔːʃənl/",
+          "ru": "обратно пропорциональный",
+          "sentences": [
+            "For a fixed distance, speed and travel time are {inversely proportional}.",
+            "Pressure is {inversely proportional} to volume at constant temperature.",
+            "If y is {inversely proportional} to x, then xy is constant."
+          ],
+          "word": "inversely proportional"
+        },
+        {
+          "def": "in the same order as the things just mentioned",
+          "id": "m19",
+          "ipa": "/rɪˈspektɪvli/",
+          "ru": "соответственно",
+          "sentences": [
+            "Anna and Ben are 12 and 15 years old, {respectively}.",
+            "The two angles are 40° and 60°, {respectively}.",
+            "The prices of tea and coffee are 300 and 500 tenge, {respectively}."
+          ],
+          "word": "respectively"
+        },
+        {
+          "def": "to be greater than a number or amount",
+          "id": "m20",
+          "ipa": "/ɪkˈsiːd/",
+          "ru": "превышать",
+          "sentences": [
+            "The total cost must not {exceed} 5000 tenge.",
+            "In how many months did sales {exceed} 1000 units?",
+            "The answer cannot {exceed} 100."
+          ],
+          "word": "exceed"
+        },
+        {
+          "def": "not less than",
+          "id": "m21",
+          "ipa": "/ət liːst/",
+          "ru": "по крайней мере, не менее",
+          "sentences": [
+            "You need {at least} 60 points in each section.",
+            "Each box contains {at least} three red balls.",
+            "How many socks must you take out to be sure of getting {at least} one pair?"
+          ],
+          "word": "at least"
+        },
+        {
+          "def": "not more than",
+          "id": "m22",
+          "ipa": "/ət məʊst/",
+          "ru": "не более, самое большее",
+          "sentences": [
+            "Each student may choose {at most} two subjects.",
+            "The bag can hold {at most} 5 kg.",
+            "There are {at most} four possible answers."
+          ],
+          "word": "at most"
+        },
+        {
+          "def": "following one after another without a gap",
+          "id": "m23",
+          "ipa": "/kənˈsekjətɪv/",
+          "ru": "последовательные, идущие подряд",
+          "sentences": [
+            "The sum of three {consecutive} integers is 48.",
+            "It rained for five {consecutive} days.",
+            "The product of two {consecutive} integers is always even."
+          ],
+          "word": "consecutive"
+        },
+        {
+          "def": "to find an approximate value",
+          "id": "m24",
+          "ipa": "/ˈestɪmeɪt/",
+          "ru": "оценить приблизительно; оценка",
+          "sentences": [
+            "{Estimate} the answer before you calculate it.",
+            "Which of the following is the best {estimate} of the total?",
+            "Round each number to {estimate} the sum quickly."
+          ],
+          "word": "estimate"
+        },
+        {
+          "def": "how likely something is to happen, from 0 to 1",
+          "id": "m25",
+          "ipa": "/ˌprɒbəˈbɪləti/",
+          "ru": "вероятность",
+          "sentences": [
+            "The {probability} of rolling a six is 1/6.",
+            "What is the {probability} that both coins land heads?",
+            "The {probability} of rain tomorrow is 30%."
+          ],
+          "word": "probability"
+        },
+        {
+          "def": "money paid for borrowing or saving money",
+          "id": "m26",
+          "ipa": "/ˈɪntrəst/",
+          "ru": "проценты (по вкладу или кредиту)",
+          "sentences": [
+            "The bank pays 5% {interest} per year on savings.",
+            "Compound {interest} is calculated on the previous year's total.",
+            "How much {interest} will she pay on the loan?"
+          ],
+          "word": "interest"
+        },
+        {
+          "def": "a reduction in price",
+          "id": "m27",
+          "ipa": "/ˈdɪskaʊnt/",
+          "ru": "скидка",
+          "sentences": [
+            "The shop offers a 15% {discount} on all shoes.",
+            "After a {discount} of 20%, the jacket costs 8000 tenge.",
+            "Two {discounts} of 10% are not the same as one of 20%."
+          ],
+          "word": "discount"
+        },
+        {
+          "def": "meeting another line at 90°",
+          "id": "m28",
+          "ipa": "/ˌpɜːpənˈdɪkjələ/",
+          "ru": "перпендикулярный",
+          "sentences": [
+            "The two lines are {perpendicular}, so they meet at a right angle.",
+            "Draw a line {perpendicular} to AB through point C.",
+            "The slopes of {perpendicular} lines multiply to −1."
+          ],
+          "word": "perpendicular"
+        },
+        {
+          "def": "the distance around a circle",
+          "id": "m29",
+          "ipa": "/səˈkʌmfərəns/",
+          "ru": "длина окружности",
+          "sentences": [
+            "The {circumference} of a circle is 2πr.",
+            "The wheel has a {circumference} of 2 metres.",
+            "Find the {circumference} of a circle with diameter 10 cm."
+          ],
+          "word": "circumference"
+        },
+        {
+          "def": "having all sides equal",
+          "id": "m30",
+          "ipa": "/ˌiːkwɪˈlætərəl/",
+          "ru": "равносторонний",
+          "sentences": [
+            "All angles of an {equilateral} triangle are 60°.",
+            "The tile is an {equilateral} triangle with side 4 cm.",
+            "Is every {equilateral} triangle also isosceles?"
+          ],
+          "word": "equilateral"
+        },
+        {
+          "def": "(of a triangle) having two equal sides",
+          "id": "m31",
+          "ipa": "/aɪˈsɒsəliːz/",
+          "ru": "равнобедренный",
+          "sentences": [
+            "An {isosceles} triangle has two equal sides.",
+            "The base angles of an {isosceles} triangle are equal.",
+            "Triangle ABC is {isosceles} with AB = AC."
+          ],
+          "word": "isosceles"
+        },
+        {
+          "def": "a fixed line on a graph used to measure position",
+          "id": "m32",
+          "ipa": "/ˈæksɪs/",
+          "ru": "ось (мн. ч. axes)",
+          "sentences": [
+            "Time is shown on the horizontal {axis}.",
+            "The graph crosses the x-{axis} at 3.",
+            "Label both {axes} before plotting the points."
+          ],
+          "word": "axis"
+        },
+        {
+          "def": "a number that gives the original number when multiplied by itself",
+          "id": "m33",
+          "ipa": "/skweə ruːt/",
+          "ru": "квадратный корень",
+          "sentences": [
+            "The {square root} of 81 is 9.",
+            "Which integer is closest to the {square root} of 50?",
+            "Take the {square root} of both sides of the equation."
+          ],
+          "word": "square root"
+        }
+      ],
+      "name": "NUET: математика на английском",
+      "order": 11,
+      "parent": "en",
+      "type": "en"
+    },
+    {
+      "id": "kz-exam-tasks",
+      "cards": [
+        {
+          "id": "t01",
+          "kz": "Тапсырма",
+          "ru": "задание"
+        },
+        {
+          "id": "t02",
+          "kz": "Мәтінді оқыңыз",
+          "ru": "прочитайте текст"
+        },
+        {
+          "id": "t03",
+          "kz": "Сұрақтарға жауап беріңіз",
+          "ru": "ответьте на вопросы"
+        },
+        {
+          "id": "t04",
+          "kz": "Дұрыс жауапты таңдаңыз",
+          "ru": "выберите правильный ответ"
+        },
+        {
+          "id": "t05",
+          "kz": "Сәйкестендіріңіз",
+          "ru": "установите соответствие"
+        },
+        {
+          "id": "t06",
+          "kz": "Кестені толтырыңыз",
+          "ru": "заполните таблицу"
+        },
+        {
+          "id": "t07",
+          "kz": "Бос орындарды толтырыңыз",
+          "ru": "заполните пропуски"
+        },
+        {
+          "id": "t08",
+          "kz": "Сөйлемді аяқтаңыз",
+          "ru": "закончите предложение"
+        },
+        {
+          "id": "t09",
+          "kz": "Негізгі ойды анықтаңыз",
+          "ru": "определите основную мысль"
+        },
+        {
+          "id": "t10",
+          "kz": "Мәтіннің тақырыбын анықтаңыз",
+          "ru": "определите тему текста"
+        },
+        {
+          "id": "t11",
+          "kz": "Мәтіннің стилін анықтаңыз",
+          "ru": "определите стиль текста"
+        },
+        {
+          "id": "t12",
+          "kz": "Мәтінде көтерілген мәселе",
+          "ru": "проблема, поднятая в тексте"
+        },
+        {
+          "id": "t13",
+          "kz": "Автордың көзқарасы",
+          "ru": "позиция (точка зрения) автора"
+        },
+        {
+          "id": "t14",
+          "kz": "Өз пікіріңізді білдіріңіз",
+          "ru": "выразите своё мнение"
+        },
+        {
+          "id": "t15",
+          "kz": "Дәлел келтіріңіз",
+          "ru": "приведите аргумент (доказательство)"
+        },
+        {
+          "id": "t16",
+          "kz": "Мысал келтіріңіз",
+          "ru": "приведите пример"
+        },
+        {
+          "id": "t17",
+          "kz": "Салыстырыңыз",
+          "ru": "сравните"
+        },
+        {
+          "id": "t18",
+          "kz": "Талдаңыз",
+          "ru": "проанализируйте"
+        },
+        {
+          "id": "t19",
+          "kz": "Түсіндіріңіз",
+          "ru": "объясните"
+        },
+        {
+          "id": "t20",
+          "kz": "Сипаттаңыз",
+          "ru": "опишите"
+        },
+        {
+          "id": "t21",
+          "kz": "Жоспар құрыңыз",
+          "ru": "составьте план"
+        },
+        {
+          "id": "t22",
+          "kz": "Сөйлем құраңыз",
+          "ru": "составьте предложение"
+        },
+        {
+          "id": "t23",
+          "kz": "Жалғастырыңыз",
+          "ru": "продолжите"
+        },
+        {
+          "id": "t24",
+          "kz": "Ретімен орналастырыңыз",
+          "ru": "расположите по порядку"
+        },
+        {
+          "id": "t25",
+          "kz": "Артық сөзді табыңыз",
+          "ru": "найдите лишнее слово"
+        },
+        {
+          "id": "t26",
+          "kz": "Астын сызыңыз",
+          "ru": "подчеркните"
+        },
+        {
+          "id": "t27",
+          "kz": "Қорытынды жасаңыз",
+          "ru": "сделайте вывод"
+        },
+        {
+          "id": "t28",
+          "kz": "Ақиқат / Жалған",
+          "ru": "верно / неверно"
+        },
+        {
+          "id": "t29",
+          "kz": "Тірек сөздерді қолданыңыз",
+          "ru": "используйте опорные слова"
+        },
+        {
+          "id": "t30",
+          "kz": "100–120 сөзден тұратын эссе жазыңыз",
+          "ru": "напишите эссе объёмом 100–120 слов"
+        },
+        {
+          "id": "t31",
+          "kz": "Кемінде",
+          "ru": "не менее, как минимум"
+        },
+        {
+          "id": "t32",
+          "kz": "Қысқаша",
+          "ru": "кратко"
+        },
+        {
+          "id": "t33",
+          "kz": "Мәтін бойынша",
+          "ru": "по тексту"
+        },
+        {
+          "id": "t34",
+          "kz": "Үзінді",
+          "ru": "отрывок"
+        },
+        {
+          "id": "t35",
+          "kz": "Кейіпкер",
+          "ru": "персонаж, герой"
+        },
+        {
+          "id": "t36",
+          "kz": "Себеп пен салдар",
+          "ru": "причина и следствие"
+        },
+        {
+          "id": "t37",
+          "kz": "Бағалау критерийі",
+          "ru": "критерий оценивания"
+        },
+        {
+          "id": "t38",
+          "kz": "Тыңдалым",
+          "ru": "аудирование"
+        },
+        {
+          "id": "t39",
+          "kz": "Оқылым",
+          "ru": "чтение (раздел экзамена)"
+        },
+        {
+          "id": "t40",
+          "kz": "Жазылым",
+          "ru": "письмо (раздел экзамена)"
+        },
+        {
+          "id": "t41",
+          "kz": "Айтылым",
+          "ru": "говорение"
+        },
+        {
+          "id": "t42",
+          "kz": "Сөздің мағынасын түсіндіріңіз",
+          "ru": "объясните значение слова"
+        },
+        {
+          "id": "t43",
+          "kz": "Мақал-мәтел",
+          "ru": "пословицы и поговорки"
+        },
+        {
+          "id": "t44",
+          "kz": "Көшіріп жазыңыз",
+          "ru": "перепишите"
+        },
+        {
+          "id": "t45",
+          "kz": "Түрлендіріңіз",
+          "ru": "преобразуйте (измените форму)"
+        },
+        {
+          "id": "t46",
+          "kz": "Сұрақ қойыңыз",
+          "ru": "задайте вопрос"
+        }
+      ],
+      "name": "Экзамен: формулировки заданий",
+      "order": 20,
+      "parent": "kz",
+      "type": "kzru"
+    },
+    {
+      "id": "kz-exam-gram",
+      "cards": [
+        {
+          "id": "g01",
+          "kz": "Зат есім",
+          "ru": "существительное"
+        },
+        {
+          "id": "g02",
+          "kz": "Сын есім",
+          "ru": "прилагательное"
+        },
+        {
+          "id": "g03",
+          "kz": "Етістік",
+          "ru": "глагол"
+        },
+        {
+          "id": "g04",
+          "kz": "Сан есім",
+          "ru": "числительное"
+        },
+        {
+          "id": "g05",
+          "kz": "Есімдік",
+          "ru": "местоимение"
+        },
+        {
+          "id": "g06",
+          "kz": "Үстеу",
+          "ru": "наречие"
+        },
+        {
+          "id": "g07",
+          "kz": "Шылау",
+          "ru": "служебное слово (союз, послелог, частица)"
+        },
+        {
+          "id": "g08",
+          "kz": "Одағай",
+          "ru": "междометие"
+        },
+        {
+          "id": "g09",
+          "kz": "Түбір",
+          "ru": "корень"
+        },
+        {
+          "id": "g10",
+          "kz": "Жұрнақ",
+          "ru": "суффикс"
+        },
+        {
+          "id": "g11",
+          "kz": "Жалғау",
+          "ru": "окончание"
+        },
+        {
+          "id": "g12",
+          "kz": "Көптік жалғау",
+          "ru": "окончание множественного числа"
+        },
+        {
+          "id": "g13",
+          "kz": "Тәуелдік жалғау",
+          "ru": "притяжательное окончание"
+        },
+        {
+          "id": "g14",
+          "kz": "Септік жалғау",
+          "ru": "падежное окончание"
+        },
+        {
+          "id": "g15",
+          "kz": "Жіктік жалғау",
+          "ru": "личное окончание"
+        },
+        {
+          "id": "g16",
+          "kz": "Сөз тіркесі",
+          "ru": "словосочетание"
+        },
+        {
+          "id": "g17",
+          "kz": "Сөйлем мүшелері",
+          "ru": "члены предложения"
+        },
+        {
+          "id": "g18",
+          "kz": "Бастауыш",
+          "ru": "подлежащее"
+        },
+        {
+          "id": "g19",
+          "kz": "Баяндауыш",
+          "ru": "сказуемое"
+        },
+        {
+          "id": "g20",
+          "kz": "Толықтауыш",
+          "ru": "дополнение"
+        },
+        {
+          "id": "g21",
+          "kz": "Анықтауыш",
+          "ru": "определение"
+        },
+        {
+          "id": "g22",
+          "kz": "Пысықтауыш",
+          "ru": "обстоятельство"
+        },
+        {
+          "id": "g23",
+          "kz": "Жай сөйлем",
+          "ru": "простое предложение"
+        },
+        {
+          "id": "g24",
+          "kz": "Құрмалас сөйлем",
+          "ru": "сложное предложение"
+        }
+      ],
+      "name": "Экзамен: грамматические термины",
+      "order": 21,
+      "parent": "kz",
+      "type": "kzru"
+    },
+    {
+      "id": "kz-lex",
+      "cards": [],
+      "name": "Лексика",
+      "order": 30,
+      "parent": "kz",
+      "type": "kz"
+    },
+    {
+      "id": "kz-lex-links",
+      "cards": [
+        {
+          "id": "l01",
+          "kz": "алайда",
+          "ru": "однако"
+        },
+        {
+          "id": "l02",
+          "kz": "дегенмен",
+          "ru": "тем не менее"
+        },
+        {
+          "id": "l03",
+          "kz": "соған қарамастан",
+          "ru": "несмотря на это"
+        },
+        {
+          "id": "l04",
+          "kz": "демек",
+          "ru": "следовательно, значит"
+        },
+        {
+          "id": "l05",
+          "kz": "сондықтан",
+          "ru": "поэтому"
+        },
+        {
+          "id": "l06",
+          "kz": "өйткені, себебі",
+          "ru": "потому что"
+        },
+        {
+          "id": "l07",
+          "kz": "сонымен қатар",
+          "ru": "кроме того"
+        },
+        {
+          "id": "l08",
+          "kz": "осылайша",
+          "ru": "таким образом"
+        },
+        {
+          "id": "l09",
+          "kz": "қорыта айтқанда",
+          "ru": "в заключение, подводя итог"
+        },
+        {
+          "id": "l10",
+          "kz": "бір жағынан",
+          "ru": "с одной стороны"
+        },
+        {
+          "id": "l11",
+          "kz": "екінші жағынан",
+          "ru": "с другой стороны"
+        },
+        {
+          "id": "l12",
+          "kz": "нәтижесінде",
+          "ru": "в результате"
+        },
+        {
+          "id": "l13",
+          "kz": "соның ішінде",
+          "ru": "в том числе"
+        },
+        {
+          "id": "l14",
+          "kz": "ең алдымен",
+          "ru": "прежде всего"
+        },
+        {
+          "id": "l15",
+          "kz": "шынында да",
+          "ru": "действительно"
+        },
+        {
+          "id": "l16",
+          "kz": "басқаша айтқанда",
+          "ru": "иначе говоря"
+        },
+        {
+          "id": "l17",
+          "kz": "…-мен салыстырғанда",
+          "note": "өткен жылмен салыстырғанда — по сравнению с прошлым годом",
+          "ru": "по сравнению с …"
+        },
+        {
+          "id": "l18",
+          "kz": "…-ның арқасында",
+          "note": "достарымның арқасында — благодаря моим друзьям",
+          "ru": "благодаря …"
+        },
+        {
+          "id": "l19",
+          "kz": "…-ға байланысты",
+          "note": "ауа райына байланысты — в связи с погодой",
+          "ru": "в связи с …"
+        }
+      ],
+      "name": "Связки для эссе и речи",
+      "order": 31,
+      "parent": "kz-lex",
+      "type": "kz"
+    },
+    {
+      "id": "kz-lex-verbs",
+      "cards": [
+        {
+          "id": "v01",
+          "kz": "сақтау",
+          "ru": "сохранять, беречь"
+        },
+        {
+          "id": "v02",
+          "kz": "қорғау",
+          "ru": "защищать, охранять"
+        },
+        {
+          "id": "v03",
+          "kz": "шешу",
+          "ru": "решать (проблему)"
+        },
+        {
+          "id": "v04",
+          "kz": "қолдау",
+          "ru": "поддерживать"
+        },
+        {
+          "id": "v05",
+          "kz": "жақсарту",
+          "ru": "улучшать"
+        },
+        {
+          "id": "v06",
+          "kz": "азайту",
+          "ru": "уменьшать, сокращать"
+        },
+        {
+          "id": "v07",
+          "kz": "арту",
+          "ru": "расти, увеличиваться"
+        },
+        {
+          "id": "v08",
+          "kz": "дамыту",
+          "note": "даму — развитие, развиваться",
+          "ru": "развивать"
+        },
+        {
+          "id": "v09",
+          "kz": "ұмтылу",
+          "ru": "стремиться"
+        },
+        {
+          "id": "v10",
+          "kz": "жету",
+          "note": "жетістікке жету — достичь успеха",
+          "ru": "достигать"
+        },
+        {
+          "id": "v11",
+          "kz": "әсер ету",
+          "ru": "влиять"
+        },
+        {
+          "id": "v12",
+          "kz": "алдын алу",
+          "ru": "предотвращать"
+        },
+        {
+          "id": "v13",
+          "kz": "қамқорлық жасау",
+          "ru": "заботиться"
+        },
+        {
+          "id": "v14",
+          "kz": "пайдалану",
+          "ru": "использовать"
+        },
+        {
+          "id": "v15",
+          "kz": "қатысу",
+          "ru": "участвовать"
+        },
+        {
+          "id": "v16",
+          "kz": "талқылау",
+          "ru": "обсуждать"
+        },
+        {
+          "id": "v17",
+          "kz": "мойындау",
+          "ru": "признавать"
+        },
+        {
+          "id": "v18",
+          "kz": "құру",
+          "ru": "создавать, основывать"
+        }
+      ],
+      "name": "Глаголы",
+      "order": 32,
+      "parent": "kz-lex",
+      "type": "kz"
+    },
+    {
+      "id": "kz-lex-society",
+      "cards": [
+        {
+          "id": "s01",
+          "kz": "қоғам",
+          "ru": "общество"
+        },
+        {
+          "id": "s02",
+          "kz": "мемлекет",
+          "ru": "государство"
+        },
+        {
+          "id": "s03",
+          "kz": "тәуелсіздік",
+          "ru": "независимость"
+        },
+        {
+          "id": "s04",
+          "kz": "азамат",
+          "ru": "гражданин"
+        },
+        {
+          "id": "s05",
+          "kz": "заң",
+          "ru": "закон"
+        },
+        {
+          "id": "s06",
+          "kz": "құқық",
+          "note": "адам құқықтары — права человека",
+          "ru": "право (права человека)"
+        },
+        {
+          "id": "s07",
+          "kz": "міндет",
+          "ru": "обязанность"
+        },
+        {
+          "id": "s08",
+          "kz": "үкімет",
+          "ru": "правительство"
+        },
+        {
+          "id": "s09",
+          "kz": "билік",
+          "ru": "власть"
+        },
+        {
+          "id": "s10",
+          "kz": "сайлау",
+          "ru": "выборы"
+        },
+        {
+          "id": "s11",
+          "kz": "ұрпақ",
+          "ru": "поколение"
+        },
+        {
+          "id": "s12",
+          "kz": "салт-дәстүр",
+          "ru": "обычаи и традиции"
+        },
+        {
+          "id": "s13",
+          "kz": "мұра",
+          "ru": "наследие"
+        },
+        {
+          "id": "s14",
+          "kz": "жауапкершілік",
+          "ru": "ответственность"
+        },
+        {
+          "id": "s15",
+          "kz": "әділеттілік",
+          "ru": "справедливость"
+        },
+        {
+          "id": "s16",
+          "kz": "қауіпсіздік",
+          "ru": "безопасность"
+        },
+        {
+          "id": "s17",
+          "kz": "бейбітшілік",
+          "note": "мир как вселенная — әлем",
+          "ru": "мир (отсутствие войны)"
+        },
+        {
+          "id": "s18",
+          "kz": "ынтымақтастық",
+          "ru": "сотрудничество"
+        },
+        {
+          "id": "s19",
+          "kz": "жұмыссыздық",
+          "ru": "безработица"
+        }
+      ],
+      "name": "Общество и государство",
+      "order": 33,
+      "parent": "kz-lex",
+      "type": "kz"
+    },
+    {
+      "id": "kz-lex-edu",
+      "cards": [
+        {
+          "id": "e01",
+          "kz": "білім беру",
+          "note": "білім — знание",
+          "ru": "образование (как система)"
+        },
+        {
+          "id": "e02",
+          "kz": "ғылым",
+          "ru": "наука"
+        },
+        {
+          "id": "e03",
+          "kz": "ғалым",
+          "ru": "учёный"
+        },
+        {
+          "id": "e04",
+          "kz": "зерттеу",
+          "ru": "исследование"
+        },
+        {
+          "id": "e05",
+          "kz": "жаңалық",
+          "note": "также «новость»",
+          "ru": "открытие (научное)"
+        },
+        {
+          "id": "e06",
+          "kz": "тәжірибе",
+          "ru": "опыт (и эксперимент, и жизненный)"
+        },
+        {
+          "id": "e07",
+          "kz": "жетістік",
+          "ru": "достижение"
+        },
+        {
+          "id": "e08",
+          "kz": "табыс",
+          "note": "также «доход»",
+          "ru": "успех"
+        },
+        {
+          "id": "e09",
+          "kz": "мақсат",
+          "ru": "цель"
+        },
+        {
+          "id": "e10",
+          "kz": "мүмкіндік",
+          "ru": "возможность"
+        },
+        {
+          "id": "e11",
+          "kz": "дағды",
+          "ru": "навык"
+        },
+        {
+          "id": "e12",
+          "kz": "бұқаралық ақпарат құралдары (БАҚ)",
+          "ru": "СМИ"
+        },
+        {
+          "id": "e13",
+          "kz": "жасанды интеллект",
+          "ru": "искусственный интеллект"
+        },
+        {
+          "id": "e14",
+          "kz": "артықшылық",
+          "ru": "преимущество"
+        },
+        {
+          "id": "e15",
+          "kz": "кемшілік",
+          "ru": "недостаток"
+        },
+        {
+          "id": "e16",
+          "kz": "пайда",
+          "ru": "польза"
+        },
+        {
+          "id": "e17",
+          "kz": "зиян",
+          "ru": "вред"
+        },
+        {
+          "id": "e18",
+          "kz": "тәуелділік",
+          "ru": "зависимость"
+        }
+      ],
+      "name": "Образование и наука",
+      "order": 34,
+      "parent": "kz-lex",
+      "type": "kz"
+    },
+    {
+      "id": "kz-lex-nature",
+      "cards": [
+        {
+          "id": "n01",
+          "kz": "қоршаған орта",
+          "ru": "окружающая среда"
+        },
+        {
+          "id": "n02",
+          "kz": "ластану",
+          "ru": "загрязнение"
+        },
+        {
+          "id": "n03",
+          "kz": "климаттың өзгеруі",
+          "ru": "изменение климата"
+        },
+        {
+          "id": "n04",
+          "kz": "табиғи байлық",
+          "ru": "природные богатства"
+        },
+        {
+          "id": "n05",
+          "kz": "табиғи апат",
+          "ru": "стихийное бедствие"
+        },
+        {
+          "id": "n06",
+          "kz": "құрғақшылық",
+          "ru": "засуха"
+        },
+        {
+          "id": "n07",
+          "kz": "су тасқыны",
+          "ru": "наводнение"
+        },
+        {
+          "id": "n08",
+          "kz": "жер сілкінісі",
+          "ru": "землетрясение"
+        },
+        {
+          "id": "n09",
+          "kz": "қоқыс",
+          "ru": "мусор"
+        },
+        {
+          "id": "n10",
+          "kz": "қалдықтар",
+          "ru": "отходы"
+        },
+        {
+          "id": "n11",
+          "kz": "қайта өңдеу",
+          "ru": "переработка (отходов)"
+        },
+        {
+          "id": "n12",
+          "kz": "жойылып бара жатқан түр",
+          "ru": "исчезающий вид"
+        },
+        {
+          "id": "n13",
+          "kz": "денсаулық",
+          "ru": "здоровье"
+        },
+        {
+          "id": "n14",
+          "kz": "салауатты өмір салты",
+          "ru": "здоровый образ жизни"
+        },
+        {
+          "id": "n15",
+          "kz": "зиянды әдет",
+          "ru": "вредная привычка"
+        },
+        {
+          "id": "n16",
+          "kz": "емдеу",
+          "ru": "лечение"
+        },
+        {
+          "id": "n17",
+          "kz": "тамақтану",
+          "ru": "питание"
+        }
+      ],
+      "name": "Природа и здоровье",
+      "order": 35,
+      "parent": "kz-lex",
+      "type": "kz"
+    },
+    {
+      "id": "kz-lex-person",
+      "cards": [
+        {
+          "id": "p01",
+          "kz": "тұлға",
+          "ru": "личность"
+        },
+        {
+          "id": "p02",
+          "kz": "мінез",
+          "ru": "характер"
+        },
+        {
+          "id": "p03",
+          "kz": "қасиет",
+          "ru": "качество, черта характера"
+        },
+        {
+          "id": "p04",
+          "kz": "мейірімділік",
+          "ru": "доброта, милосердие"
+        },
+        {
+          "id": "p05",
+          "kz": "адалдық",
+          "ru": "честность"
+        },
+        {
+          "id": "p06",
+          "kz": "еңбекқорлық",
+          "ru": "трудолюбие"
+        },
+        {
+          "id": "p07",
+          "kz": "сабыр",
+          "ru": "терпение"
+        },
+        {
+          "id": "p08",
+          "kz": "құрмет",
+          "ru": "уважение"
+        },
+        {
+          "id": "p09",
+          "kz": "ар-ождан",
+          "ru": "совесть"
+        },
+        {
+          "id": "p10",
+          "kz": "арман",
+          "ru": "мечта"
+        },
+        {
+          "id": "p11",
+          "kz": "сезім",
+          "ru": "чувство"
+        },
+        {
+          "id": "p12",
+          "kz": "көңіл-күй",
+          "ru": "настроение"
+        },
+        {
+          "id": "p13",
+          "kz": "сенім",
+          "ru": "доверие, уверенность"
+        },
+        {
+          "id": "p14",
+          "kz": "кішіпейілділік",
+          "ru": "скромность"
+        },
+        {
+          "id": "p15",
+          "kz": "құндылық",
+          "ru": "ценность"
+        },
+        {
+          "id": "p16",
+          "kz": "тәрбие",
+          "ru": "воспитание"
+        }
+      ],
+      "name": "Человек и его качества",
+      "order": 36,
+      "parent": "kz-lex",
+      "type": "kz"
+    }
+  ]
+}

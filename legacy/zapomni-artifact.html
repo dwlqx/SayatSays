@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Запомни">
+<title>Запомни</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E8ECF0; --surface:#FFFFFF; --surface2:#F3F5F8; --ink:#152030; --muted:#5A6778; --line:#D3D9E0;
+  --kz:#0A8BA8; --en:#5A4AC0; --qa:#A5690F;
+  --good:#23805A; --bad:#BD4234; --focus:#0A8BA8;
+  --shadow:0 1px 0 rgba(21,32,48,.05), 0 14px 34px -14px rgba(21,32,48,.28);
+  --ui:"Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --text:"Literata", Georgia, "Times New Roman", serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E131A; --surface:#18212C; --surface2:#141B24; --ink:#E4E9F0; --muted:#8E9AA9; --line:#283341;
+    --kz:#3FC0DA; --en:#A396F2; --qa:#E2AA4E; --good:#3FB27E; --bad:#EC7465; --focus:#3FC0DA;
+    --shadow:0 1px 0 rgba(0,0,0,.3), 0 16px 36px -14px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E131A; --surface:#18212C; --surface2:#141B24; --ink:#E4E9F0; --muted:#8E9AA9; --line:#283341;
+  --kz:#3FC0DA; --en:#A396F2; --qa:#E2AA4E; --good:#3FB27E; --bad:#EC7465; --focus:#3FC0DA;
+  --shadow:0 1px 0 rgba(0,0,0,.3), 0 16px 36px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%;-webkit-text-size-adjust:100%}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+button:disabled{cursor:default}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+#app{max-width:560px;margin:0 auto;padding:0 18px 40px;min-height:100%}
+#app.is-study{max-width:none;padding:0;height:100%;min-height:0}
+
+.top{display:flex;align-items:center;justify-content:space-between;padding:16px 0 6px}
+.brand{font-family:var(--text);font-weight:600;font-size:2.2rem;letter-spacing:-.01em;margin:0;line-height:1.1}
+.icon-btn{width:44px;height:44px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink);flex:none}
+.icon-btn:disabled{opacity:.3}
+.icon-btn svg{width:22px;height:22px}
+.note{font-size:.88rem;color:var(--muted);margin:6px 0 10px}
+
+.streak{display:grid;grid-template-columns:auto 1fr;column-gap:16px;row-gap:10px;align-items:center;padding:12px 0 18px}
+.snum{font-family:var(--text);font-size:3rem;font-weight:600;line-height:.9;font-variant-numeric:lining-nums}
+.slabel{font-size:.95rem;margin-bottom:6px}
+.week{display:flex;gap:5px}
+.week i{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-style:normal;font-size:.72rem;color:var(--muted);border:1.5px solid var(--line)}
+.week i.done{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.week i.frozen{border-style:dashed;border-color:var(--kz);color:var(--kz)}
+.week i.today{border-color:var(--ink);color:var(--ink)}
+.week i.future{opacity:.4}
+.sline{grid-column:1/-1;margin:0;font-size:.9rem;color:var(--muted)}
+.today-only{padding:10px 0 16px;margin:0;color:var(--muted)}
+.today-only b{color:var(--ink)}
+
+.primary{width:100%;min-height:58px;border:0;border-radius:16px;background:var(--ink);color:var(--bg);font-weight:600;font-size:1.05rem;display:flex;justify-content:space-between;align-items:center;padding:0 20px;cursor:pointer}
+.primary:disabled{background:var(--surface2);color:var(--muted);border:1px solid var(--line);justify-content:center}
+.pill{min-width:36px;padding:3px 10px;border-radius:999px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums;font-size:.95rem}
+
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 0 2px}
+.sec h2{font-family:var(--text);font-size:1.3rem;font-weight:600;margin:0}
+.sec .cnt{font-family:var(--ui);font-size:.9rem;color:var(--muted);font-weight:400;margin-left:6px}
+.link{background:none;border:0;color:var(--ink);font-weight:500;padding:10px 0 10px 12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
+
+.decks,.cards{list-style:none;margin:0;padding:0}
+.deck-row{display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:14px 2px;cursor:pointer}
+.deck-row .sw{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.deck-row.d0 .nm{font-family:var(--text);font-size:1.12rem;font-weight:500}
+.deck-row.d1{padding-left:24px}
+.deck-row.d2{padding-left:44px}
+.deck-row.d1 .sw,.deck-row.d2 .sw{width:6px;height:6px;border-radius:2px;justify-self:center}
+.deck-row .nm{display:block}
+.deck-row .mt{display:block;font-size:.8rem;color:var(--muted);margin-top:1px}
+.deck-row .due{min-width:32px;text-align:right;font-weight:600;color:var(--c);font-variant-numeric:tabular-nums;font-size:1.05rem}
+.deck-row .due.zero{color:var(--muted);font-weight:400}
+
+.back-btn{display:inline-flex;align-items:center;gap:4px;background:none;border:0;padding:14px 0 4px;cursor:pointer;color:var(--muted);font-size:.95rem}
+.back-btn svg{width:18px;height:18px}
+.deck-h{font-family:var(--text);font-size:1.9rem;font-weight:600;line-height:1.15;margin:4px 0 4px}
+.deck-type{font-size:.85rem;color:var(--c);margin:0 0 18px;font-weight:500}
+.stack{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin-bottom:12px}
+.stack span{display:block;height:100%}
+.stack .s-learn{background:color-mix(in srgb, var(--c) 40%, var(--line))}
+.stack .s-done{background:var(--c)}
+.legend{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 20px}
+.legend div{display:flex;flex-direction:column}
+.legend b{font-size:1.25rem;font-variant-numeric:tabular-nums;font-weight:600}
+.legend span{font-size:.8rem;color:var(--muted)}
+.legend .k{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:1px}
+
+.cards li{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.cards .f{font-weight:500;overflow-wrap:anywhere}
+.cards .b{color:var(--muted);font-size:.9rem;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.del{border:0;background:none;color:var(--muted);width:40px;height:40px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.del svg{width:18px;height:18px}
+.danger{margin-top:28px;background:none;border:0;color:var(--bad);padding:10px 0;cursor:pointer;font-weight:500}
+.empty{padding:22px 0;color:var(--muted)}
+.empty p{margin:0 0 6px}
+
+/* Study */
+.study{height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto;padding:4px 16px 14px}
+.sbar{display:flex;align-items:center;gap:8px;height:52px;flex:none}
+.pbar{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.pbar>div{height:100%;background:var(--ink);transition:width .3s ease}
+.left{min-width:28px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem}
+.stage{flex:1;min-height:0;position:relative;margin:6px 0 14px}
+.swipe{position:absolute;inset:0;perspective:1400px;touch-action:pan-y;transition:transform .25s ease}
+.swipe.enter{animation:enter .28s ease-out}
+@keyframes enter{from{opacity:0;transform:translateY(12px) scale(.985)}}
+.card3d{position:absolute;inset:0;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.75,.25,1);cursor:pointer}
+.card3d.flipped{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;background:var(--surface);border-radius:22px;box-shadow:var(--shadow);border-top:6px solid var(--c);display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .15s}
+.face.back{transform:rotateY(180deg)}
+.swipe[data-dir="good"] .face{box-shadow:0 0 0 3px var(--good), var(--shadow)}
+.swipe[data-dir="bad"] .face{box-shadow:0 0 0 3px var(--bad), var(--shadow)}
+.tag{padding:12px 20px 0;font-size:.8rem;color:var(--c);font-weight:600;flex:none}
+.body{flex:1;overflow:auto;padding:14px 24px 26px;display:flex;flex-direction:column;font-family:var(--text);-webkit-overflow-scrolling:touch}
+.body>:first-child{margin-top:auto}
+.body>:last-child{margin-bottom:auto}
+.word{font-size:clamp(1.9rem,8.5vw,2.7rem);font-weight:600;line-height:1.15;text-align:center;overflow-wrap:anywhere}
+.prompt{text-align:center;color:var(--muted);font-family:var(--ui);font-size:.95rem;margin-top:14px}
+.sentence{font-size:1.32rem;line-height:1.6;margin:0}
+.gap{display:inline-block;width:4.6em;border-bottom:2.5px solid var(--c);height:1.05em;vertical-align:-.12em}
+.hint{color:var(--muted);font-style:italic}
+mark{background:color-mix(in srgb, var(--c) 24%, transparent);color:inherit;border-radius:4px;padding:0 .12em}
+.ipa{text-align:center;color:var(--muted);font-family:var(--ui);margin-top:4px}
+.tr{text-align:center;font-size:1.2rem;margin:10px 0 20px}
+.sentence.fill{font-size:1.12rem;line-height:1.55}
+.sentence.alt{font-size:1.02rem;color:var(--muted);margin-top:12px}
+.small-q{font-size:1rem;color:var(--muted);margin:0 0 14px;white-space:pre-line}
+.small-q.c{text-align:center}
+.qa-q,.qa-a{font-size:1.35rem;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
+.qa-a{font-weight:600}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:none}
+.actions .show{grid-column:1/-1}
+.btn-big{min-height:62px;border-radius:18px;border:0;font-weight:600;font-size:1.08rem;cursor:pointer}
+.show{background:var(--ink);color:var(--bg)}
+.bad{background:var(--surface);color:var(--bad);box-shadow:inset 0 0 0 1.5px var(--bad)}
+.good{background:var(--good);color:#fff}
+.hint-keys{text-align:center;font-size:.78rem;color:var(--muted);margin:10px 0 0;flex:none}
+@media (hover:none){.hint-keys{display:none}}
+
+.done{max-width:560px;margin:0 auto;padding:18vh 22px 30px}
+.done h1{font-family:var(--text);font-size:2.4rem;margin:0 0 10px}
+.done p{color:var(--muted);margin:0 0 8px;font-size:1.05rem}
+.done .primary{margin-top:26px;justify-content:center}
+
+/* Sheet */
+#sheet:empty{display:none}
+.sheet-wrap{position:fixed;inset:0;background:rgba(8,12,18,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:22px 20px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto}
+.sheet h2{font-family:var(--text);font-size:1.45rem;font-weight:600;margin:0 0 16px}
+.sheet label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:12px}
+.sheet input:not([type=checkbox]),.sheet select,.sheet textarea{display:block;width:100%;margin-top:6px;font:inherit;font-size:16px;color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.sheet textarea{min-height:110px;resize:vertical;line-height:1.45}
+.sheet .help{font-size:.82rem;color:var(--muted);margin:-4px 0 14px}
+.sheet label.check{display:flex;align-items:center;gap:12px;color:var(--ink);font-size:1rem;margin:4px 0 14px}
+.sheet label.check input{width:22px;height:22px;margin:0;accent-color:var(--ink)}
+.row{display:flex;gap:10px;margin-top:8px}
+.btn{flex:1;min-height:52px;border-radius:14px;border:0;font-weight:600;cursor:pointer;font-size:1rem}
+.btn.dark{background:var(--ink);color:var(--bg)}
+.btn.ghost{background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line)}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-size:.92rem;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;z-index:30}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion: reduce){
+  .card3d,.swipe,.pbar>div,#toast{transition:none}
+  .swipe.enter{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="sheet"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+'use strict';
+
+/* ---------- helpers ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const DAY = 864e5;
+function dayIndex(ts){ const d = new Date((ts || Date.now()) - 4 * 3600e3); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY); }
+const weekOf = i => Math.floor((i + 3) / 7);
+function plural(n, a, b, c){ const m = Math.abs(n) % 100, k = m % 10; if (m > 10 && m < 20) return c; if (k > 1 && k < 5) return b; if (k === 1) return a; return c; }
+function uid36(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const LS = {
+  get(k, f){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch (e) { return f; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+let toastTimer = null;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 3200); }
+
+const ICON = {
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  undo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>'
+};
+
+/* ---------- model ---------- */
+const TYPES = {
+  kz: { label:'Казахский: русский → казахский', color:'var(--kz)' },
+  kzru: { label:'Казахский: казахский → русский', color:'var(--kz)' },
+  en: { label:'Английский: предложение с пропуском', color:'var(--en)' },
+  qa: { label:'Предмет: вопрос и ответ', color:'var(--qa)' }
+};
+const typeOf = d => (d && TYPES[d.type]) ? d.type : 'qa';
+const colorOf = d => TYPES[typeOf(d)].color;
+const LEARNED_IV = 7;
+const DEFAULT_SETTINGS = { newPerDay:15, goal:10, streak:true, t:0 };
+
+const S = {
+  decks: LS.get('zh.decks', {}),
+  prog: LS.get('zh.prog', {}),
+  stats: LS.get('zh.stats', { days:{} }),
+  settings: Object.assign({}, DEFAULT_SETTINGS, LS.get('zh.settings', {})),
+  db:null, uid:null, canEdit:false, online:false, tried:false, synced:false, decksLoaded:false,
+  view:{ name:'home' }, session:null
+};
+if (!S.stats || typeof S.stats.days !== 'object') S.stats = { days:{} };
+
+let lsTimer = null;
+function saveLocalNow(){ clearTimeout(lsTimer); LS.set('zh.decks', S.decks); LS.set('zh.prog', S.prog); LS.set('zh.stats', S.stats); LS.set('zh.settings', S.settings); }
+function saveLocal(){ clearTimeout(lsTimer); lsTimer = setTimeout(saveLocalNow, 300); }
+
+function progOf(id){ if (!S.prog[id]) S.prog[id] = { cards:{}, nd:null }; if (!S.prog[id].cards) S.prog[id].cards = {}; return S.prog[id]; }
+function childrenOf(pid){
+  return Object.values(S.decks)
+    .filter(d => pid ? d.parent === pid : (!d.parent || !S.decks[d.parent]))
+    .filter(d => d.id !== pid)
+    .sort((a, b) => ((a.order || 0) - (b.order || 0)) || String(a.name).localeCompare(String(b.name), 'ru'));
+}
+function descendants(id, seen){ seen = seen || new Set(); if (seen.has(id)) return []; seen.add(id); const out = [id]; for (const k of childrenOf(id)) out.push(...descendants(k.id, seen)); return out; }
+function newLeft(id, today){ const nd = progOf(id).nd; const used = nd && nd.day === today ? nd.n : 0; return Math.max(0, (S.settings.newPerDay | 0) - used); }
+
+function deckCounts(id, withKids){
+  const ids = withKids ? descendants(id) : [id]; const today = dayIndex();
+  const c = { total:0, nw:0, learning:0, learned:0, today:0 };
+  for (const x of ids){
+    const d = S.decks[x]; if (!d) continue; const p = progOf(x); let fresh = 0;
+    for (const card of (d.cards || [])){
+      c.total++; const e = p.cards[card.id];
+      if (!e || !e.s){ c.nw++; fresh++; }
+      else if (e.s === 1){ c.learning++; c.today++; }
+      else { if ((e.iv || 0) >= LEARNED_IV) c.learned++; else c.learning++; if (e.d <= today) c.today++; }
+    }
+    c.today += Math.min(fresh, newLeft(x, today));
+  }
+  return c;
+}
+
+function buildQueue(ids){
+  const today = dayIndex(), learn = [], rev = [], fresh = [];
+  for (const id of ids){
+    const d = S.decks[id]; if (!d) continue; const p = progOf(id); let left = newLeft(id, today);
+    for (const card of (d.cards || [])){
+      const e = p.cards[card.id];
+      if (!e || !e.s){ if (left > 0){ fresh.push({ deck:id, card:card.id }); left--; } }
+      else if (e.s === 1) learn.push({ deck:id, card:card.id, ts:e.ts || 0 });
+      else if (e.d <= today) rev.push({ deck:id, card:card.id });
+    }
+  }
+  learn.sort((a, b) => a.ts - b.ts);
+  shuffle(rev);
+  const mixed = []; let i = 0, j = 0;
+  while (i < rev.length || j < fresh.length){
+    for (let k = 0; k < 3 && i < rev.length; k++) mixed.push(rev[i++]);
+    if (j < fresh.length) mixed.push(fresh[j++]);
+  }
+  return learn.map(x => ({ deck:x.deck, card:x.card })).concat(mixed);
+}
+
+function streakInfo(){
+  const days = S.stats.days || {}; const today = dayIndex();
+  const isDone = i => !!(days[i] && days[i].done);
+  const keys = Object.keys(days).map(Number).filter(n => !isNaN(n));
+  const minDay = keys.length ? Math.min.apply(null, keys) : today;
+  const used = {}, frozen = new Set(); let tentative = [], s = 0;
+  let i = isDone(today) ? today : today - 1;
+  while (i >= minDay){
+    if (isDone(i)){ s++; tentative.forEach(t => frozen.add(t)); tentative = []; }
+    else { const w = weekOf(i); if ((used[w] || 0) < 2){ used[w] = (used[w] || 0) + 1; tentative.push(i); } else break; }
+    i--;
+  }
+  const wk = weekOf(today);
+  const usedThisWeek = Array.from(frozen).filter(d => weekOf(d) === wk).length;
+  return { streak:s, frozen, freezesLeft:Math.max(0, 2 - usedThisWeek), todayDone:isDone(today), todayN:(days[today] && days[today].n) || 0 };
+}
+
+/* ---------- storage sync ---------- */
+const W = {
+  pending:new Map(), timers:new Map(), busy:new Set(),
+  queue(path, getData, delay){
+    if (!S.db) return;
+    this.pending.set(path, getData);
+    clearTimeout(this.timers.get(path));
+    this.timers.set(path, setTimeout(() => this.flush(path), delay == null ? 900 : delay));
+  },
+  async flush(path){
+    if (this.busy.has(path) || !S.db) return;
+    const g = this.pending.get(path); if (!g) return;
+    this.pending.delete(path); clearTimeout(this.timers.get(path)); this.timers.delete(path);
+    const data = g(); if (!data) return;
+    this.busy.add(path);
+    try { await S.db.doc(path).set(JSON.parse(JSON.stringify(data))); }
+    catch (e){
+      const code = e && e.code;
+      if (code === 'unavailable' || code === 'resource_exhausted'){
+        if (!this.pending.has(path)) this.pending.set(path, g);
+        this.timers.set(path, setTimeout(() => this.flush(path), 1500 + Math.random() * 2500));
+      } else if (code === 'quota_exceeded'){ toast('Хранилище заполнено. Удали ненужные колоды, чтобы сохранять новое.'); }
+      else if (code === 'revoked'){ goOffline(); }
+      else { toast(path.indexOf('decks/') === 0 ? 'Не удалось сохранить колоду: нет прав на изменение.' : 'Прогресс не ушёл в облако, но сохранён на этом устройстве.'); }
+    } finally {
+      this.busy.delete(path);
+      if (this.pending.has(path) && !this.timers.has(path)) setTimeout(() => this.flush(path), 50);
+    }
+  },
+  flushAll(){ for (const p of Array.from(this.pending.keys())) this.flush(p); }
+};
+
+const progPath = id => 'data/users/' + S.uid + '/p_' + id;
+function persistProg(id){ saveLocal(); if (S.online && S.uid) W.queue(progPath(id), () => { const p = S.prog[id]; return p ? { cards:p.cards, nd:p.nd || null } : null; }); }
+function persistStats(){
+  saveLocal();
+  if (S.online && S.uid) W.queue('data/users/' + S.uid + '/stats', () => {
+    const cut = dayIndex() - 400, days = {};
+    for (const k in S.stats.days) if (+k >= cut) days[k] = S.stats.days[k];
+    return { days };
+  });
+}
+function persistSettings(){ saveLocal(); if (S.online && S.uid) W.queue('data/users/' + S.uid + '/settings', () => Object.assign({}, S.settings), 200); }
+function saveDeck(d){
+  S.decks = Object.assign({}, S.decks, { [d.id]:d }); saveLocal();
+  if (S.online) W.queue('decks/' + d.id, () => { const x = S.decks[d.id]; if (!x) return null; const o = Object.assign({}, x); delete o.id; return o; }, 250);
+}
+
+function pickNd(a, b){ if (!a) return b || null; if (!b) return a; if (a.day !== b.day) return a.day > b.day ? a : b; return a.n >= b.n ? a : b; }
+function mergeProg(l, r){
+  l = l || { cards:{}, nd:null }; r = r || {};
+  const rc = r.cards || {}, cards = {}; let localNewer = false;
+  for (const k in rc) cards[k] = rc[k];
+  for (const k in (l.cards || {})){ const le = l.cards[k], re = rc[k]; if (!re || (le.t || 0) > (re.t || 0)){ cards[k] = le; localNewer = true; } }
+  const nd = pickNd(l.nd, r.nd);
+  if (nd && (!r.nd || nd.day !== r.nd.day || nd.n !== r.nd.n)) localNewer = true;
+  return { out:{ cards, nd }, localNewer };
+}
+function mergeStats(l, r){
+  const ld = (l && l.days) || {}, rd = (r && r.days) || {}, days = {}; let localNewer = false;
+  for (const k in rd) days[k] = { n:rd[k].n || 0, done:!!rd[k].done };
+  for (const k in ld){
+    const a = ld[k], b = days[k];
+    if (!b){ days[k] = { n:a.n || 0, done:!!a.done }; localNewer = true; }
+    else { if ((a.n || 0) > b.n){ b.n = a.n; localNewer = true; } if (a.done && !b.done){ b.done = true; localNewer = true; } }
+  }
+  return { out:{ days }, localNewer };
+}
+
+function onDecks(snap){
+  if (snap.empty && snap.metadata && snap.metadata.fromCache) return;
+  const next = {};
+  snap.docs.forEach(d => { if (!d.exists) return; const x = d.data() || {}; next[d.id] = Object.assign({}, x, { id:d.id, cards:Array.isArray(x.cards) ? x.cards.slice() : [] }); });
+  for (const p of W.pending.keys()) if (p.indexOf('decks/') === 0){ const id = p.slice(6); if (S.decks[id]) next[id] = S.decks[id]; }
+  S.decks = next; S.decksLoaded = true; saveLocal(); softRender();
+}
+function onUser(snap){
+  if (snap.empty && snap.metadata && snap.metadata.fromCache) return;
+  const seen = new Set();
+  snap.docs.forEach(doc => {
+    if (!doc.exists) return; const x = doc.data() || {}, id = doc.id; seen.add('#' + id);
+    if (id === 'stats'){ const m = mergeStats(S.stats, x); S.stats = m.out; if (m.localNewer) persistStats(); }
+    else if (id === 'settings'){
+      if ((x.t || 0) > (S.settings.t || 0)) S.settings = Object.assign({}, DEFAULT_SETTINGS, x);
+      else if ((S.settings.t || 0) > (x.t || 0)) persistSettings();
+    }
+    else if (id.indexOf('p_') === 0){ const did = id.slice(2); seen.add(did); const m = mergeProg(S.prog[did], x); S.prog[did] = m.out; if (m.localNewer) persistProg(did); }
+  });
+  if (!S.synced && !(snap.metadata && snap.metadata.fromCache)){
+    S.synced = true;
+    for (const did of Object.keys(S.prog)) if (!seen.has(did) && (!S.decksLoaded || S.decks[did]) && Object.keys(S.prog[did].cards || {}).length) persistProg(did);
+    if (!seen.has('#stats') && Object.keys(S.stats.days || {}).length) persistStats();
+    if (!seen.has('#settings') && S.settings.t) persistSettings();
+  }
+  saveLocal(); softRender();
+}
+function onDbError(e){
+  if (e && e.code === 'revoked'){ goOffline(); return; }
+  toast('Связь с хранилищем прервалась. Прогресс сохраняется на устройстве.');
+  goOffline();
+}
+function goOffline(){ S.online = false; S.db = null; softRender(); }
+
+async function connect(){
+  const c = window.claude;
+  if (!c || typeof c.use !== 'function'){ S.tried = true; render(); return; }
+  let db = null, user = null;
+  try { [db, user] = await Promise.all([ c.use('db').catch(() => null), c.use('user').catch(() => null) ]); } catch (e) {}
+  S.tried = true;
+  if (!db){ render(); return; }
+  S.db = db;
+  if (user){
+    try { S.uid = await user.id(); } catch (e) {}
+    try { S.canEdit = !!(await user.canEdit()); } catch (e) { S.canEdit = true; }
+  } else S.canEdit = true;
+  S.online = true;
+  try { db.collection('decks').onSnapshot(onDecks, onDbError); } catch (e) { onDbError(e); }
+  if (S.uid){ try { db.collection('data/users/' + S.uid).onSnapshot(onUser, onDbError); } catch (e) {} }
+  render();
+}
+
+/* ---------- rendering ---------- */
+function render(){
+  const app = $('#app'), v = S.view;
+  app.className = v.name === 'study' ? 'is-study' : '';
+  if (v.name === 'deck' && !S.decks[v.id]) S.view = { name:'home' };
+  if (S.view.name === 'home'){ app.innerHTML = homeHTML(); maybeAutoDone(); }
+  else if (S.view.name === 'deck') app.innerHTML = deckHTML(S.view.id);
+  else if (S.view.name === 'study') renderStudy(true);
+}
+function softRender(){ if (S.view.name !== 'study') render(); }
+
+function streakHTML(){
+  const st = streakInfo();
+  if (!S.settings.streak) return '<p class="today-only">Сегодня ответов: <b>' + st.todayN + '</b></p>';
+  const today = dayIndex(), mon = weekOf(today) * 7 - 3, L = ['П','В','С','Ч','П','С','В'];
+  const N = ['понедельник','вторник','среда','четверг','пятница','суббота','воскресенье'];
+  const days = S.stats.days || {};
+  const cells = L.map((l, i) => {
+    const d = mon + i; let c, t;
+    if (days[d] && days[d].done){ c = 'done'; t = 'занимался'; }
+    else if (st.frozen.has(d)){ c = 'frozen'; t = 'заморозка'; }
+    else if (d === today){ c = 'today'; t = 'сегодня'; }
+    else if (d > today){ c = 'future'; t = 'впереди'; }
+    else { c = 'miss'; t = 'пропуск'; }
+    return '<i class="' + c + '" title="' + N[i] + ': ' + t + '">' + l + '</i>';
+  }).join('');
+  const goal = S.settings.goal;
+  const line = st.todayDone ? 'Сегодня засчитано.' : 'Сегодня ' + st.todayN + ' из ' + goal + ' ответов.';
+  return '<section class="streak"><div class="snum">' + st.streak + '</div><div><div class="slabel">' +
+    plural(st.streak, 'день', 'дня', 'дней') + ' подряд</div><div class="week">' + cells + '</div></div>' +
+    '<p class="sline">' + line + ' Заморозок на этой неделе осталось: ' + st.freezesLeft + '.</p></section>';
+}
+
+function rowsHTML(pid, depth){
+  if (depth > 5) return '';
+  return childrenOf(pid).map(d => {
+    const c = deckCounts(d.id, true);
+    return '<li><button class="deck-row d' + Math.min(depth, 2) + '" data-act="open-deck" data-id="' + esc(d.id) + '" style="--c:' + colorOf(d) + '">' +
+      '<span class="sw"></span><span><span class="nm">' + esc(d.name) + '</span><span class="mt">выучено ' + c.learned + ' из ' + c.total + '</span></span>' +
+      '<span class="due' + (c.today ? '' : ' zero') + '" aria-label="на сегодня ' + c.today + '">' + c.today + '</span></button></li>' + rowsHTML(d.id, depth + 1);
+  }).join('');
+}
+
+function homeHTML(){
+  const edit = S.online && S.canEdit, ids = Object.keys(S.decks);
+  let all = 0; for (const id of ids) all += deckCounts(id, false).today;
+  let h = '<header class="top"><h1 class="brand">Запомни</h1><button class="icon-btn" data-act="settings" aria-label="Настройки">' + ICON.gear + '</button></header>';
+  if (S.tried && !S.online) h += '<p class="note">Нет связи с хранилищем. Прогресс сохраняется на этом устройстве и догрузится в облако, когда связь появится.</p>';
+  h += streakHTML();
+  if (!ids.length){
+    h += S.tried
+      ? '<div class="empty"><p>Колод пока нет.</p><p>Напиши Claude в чате, что нужно выучить, и карточки появятся здесь.</p>' + (edit ? '<button class="link" style="padding-left:0" data-act="add-deck">Создать колоду самому</button>' : '') + '</div>'
+      : '<div class="empty"><p>Загружаю колоды…</p></div>';
+    return h;
+  }
+  h += '<button class="primary" data-act="study-all"' + (all ? '' : ' disabled') + '><span>' + (all ? 'Повторить всё' : 'На сегодня всё повторено') + '</span>' + (all ? '<span class="pill">' + all + '</span>' : '') + '</button>';
+  h += '<div class="sec"><h2>Колоды</h2>' + (edit ? '<button class="link" data-act="add-deck">Новая колода</button>' : '') + '</div>';
+  h += '<ul class="decks">' + rowsHTML(null, 0) + '</ul>';
+  return h;
+}
+
+function cardSummary(type, c){
+  if (type === 'kz') return [c.ru, c.kz];
+  if (type === 'kzru') return [c.kz, c.ru];
+  if (type === 'en') return [c.word, [c.ru, c.def].filter(Boolean).join('; ')];
+  return [c.q, c.a];
+}
+
+function deckHTML(id){
+  const d = S.decks[id], t = typeOf(d), c = deckCounts(id, true), kids = childrenOf(id);
+  const edit = S.online && S.canEdit, parent = d.parent && S.decks[d.parent];
+  const tot = c.total || 1;
+  let h = '<div style="--c:' + colorOf(d) + '">';
+  h += '<button class="back-btn" data-act="' + (parent ? 'open-deck' : 'home') + '"' + (parent ? ' data-id="' + esc(parent.id) + '"' : '') + '>' + ICON.back + (parent ? esc(parent.name) : 'Колоды') + '</button>';
+  h += '<h1 class="deck-h">' + esc(d.name) + '</h1><p class="deck-type">' + TYPES[t].label + '</p>';
+  h += '<div class="stack" aria-hidden="true"><span style="flex:' + c.nw / tot + '"></span><span class="s-learn" style="flex:' + c.learning / tot + '"></span><span class="s-done" style="flex:' + c.learned / tot + '"></span></div>';
+  h += '<div class="legend"><div><b>' + c.nw + '</b><span><i class="k" style="background:var(--line)"></i>новые</span></div>' +
+       '<div><b>' + c.learning + '</b><span><i class="k" style="background:color-mix(in srgb, var(--c) 40%, var(--line))"></i>изучаются</span></div>' +
+       '<div><b>' + c.learned + '</b><span><i class="k" style="background:var(--c)"></i>выучено</span></div>' +
+       '<div><b>' + c.total + '</b><span>всего</span></div></div>';
+  h += '<button class="primary" data-act="study-deck" data-id="' + esc(id) + '"' + (c.today ? '' : ' disabled') + '><span>' + (c.today ? 'Учить' : 'На сегодня всё') + '</span>' + (c.today ? '<span class="pill">' + c.today + '</span>' : '') + '</button>';
+  if (kids.length || edit){
+    h += '<div class="sec"><h2>Подколоды</h2>' + (edit ? '<button class="link" data-act="add-deck" data-parent="' + esc(id) + '">Добавить</button>' : '') + '</div>';
+    h += kids.length ? '<ul class="decks">' + rowsHTML(id, 1) + '</ul>' : '<p class="note">Нет подколод.</p>';
+  }
+  const cards = d.cards || [];
+  if (cards.length || !kids.length){
+    h += '<div class="sec"><h2>Карточки<span class="cnt">' + cards.length + '</span></h2>' + (edit ? '<button class="link" data-act="add-card" data-id="' + esc(id) + '">Добавить</button>' : '') + '</div>';
+    if (!cards.length) h += '<p class="note">Карточек пока нет. Напиши Claude в чате, что добавить в «' + esc(d.name) + '»' + (edit ? ', или добавь сам.' : '.') + '</p>';
+    else h += '<ul class="cards">' + cards.map(card => {
+      const s = cardSummary(t, card);
+      return '<li><div><div class="f">' + esc(s[0]) + '</div><div class="b">' + esc(s[1]) + '</div></div>' +
+        (edit ? '<button class="del" data-act="del-card" data-deck="' + esc(id) + '" data-card="' + esc(card.id) + '" aria-label="Удалить карточку">' + ICON.trash + '</button>' : '') + '</li>';
+    }).join('') + '</ul>';
+  }
+  if (edit) h += '<button class="danger" data-act="del-deck" data-id="' + esc(id) + '">Удалить колоду</button>';
+  return h + '</div>';
+}
+
+function cloze(s, word, mode){
+  s = String(s || ''); const m = s.match(/\{([^}]+)\}/); let pre, ans, post;
+  if (m){ pre = s.slice(0, m.index); ans = m[1]; post = s.slice(m.index + m[0].length); }
+  else {
+    const i = word ? s.toLowerCase().indexOf(String(word).toLowerCase()) : -1;
+    if (i < 0) return esc(s);
+    pre = s.slice(0, i); ans = s.slice(i, i + String(word).length); post = s.slice(i + String(word).length);
+  }
+  const mid = mode === 'gap' ? '<span class="gap" role="img" aria-label="пропуск"></span>' : '<mark>' + esc(ans) + '</mark>';
+  return esc(pre.replace(/[{}]/g, '')) + mid + esc(post.replace(/[{}]/g, ''));
+}
+
+function facesHTML(deck, card, e){
+  const t = typeOf(deck), tag = '<div class="tag">' + esc(deck.name) + '</div>';
+  let f, b;
+  if (t === 'kz' || t === 'kzru'){
+    const q = t === 'kz' ? card.ru : card.kz, a = t === 'kz' ? card.kz : card.ru;
+    f = '<div class="word">' + esc(q) + '</div><div class="prompt">' + (t === 'kz' ? 'Қазақша?' : 'По-русски?') + '</div>';
+    b = '<p class="small-q c">' + esc(q) + '</p><div class="word">' + esc(a) + '</div>' + (card.note ? '<div class="prompt">' + esc(card.note) + '</div>' : '');
+  } else if (t === 'en'){
+    const ss = (card.sentences || []).filter(Boolean), k = (e && e.k) || 0;
+    const s = ss.length ? ss[k % ss.length] : '', s2 = ss.length > 1 ? ss[(k + 1) % ss.length] : '';
+    f = s ? '<p class="sentence">' + cloze(s, card.word, 'gap') + (card.def ? ' <span class="hint">(' + esc(card.def) + ')</span>' : '') + '</p>'
+          : '<p class="sentence hint">' + esc(card.def || card.ru || '') + '</p>';
+    b = '<div class="word">' + esc(card.word) + '</div>' + (card.ipa ? '<div class="ipa">' + esc(card.ipa) + '</div>' : '') +
+        (card.ru ? '<div class="tr">' + esc(card.ru) + '</div>' : '') +
+        (s ? '<p class="sentence fill">' + cloze(s, card.word, 'fill') + '</p>' : '') +
+        (s2 ? '<p class="sentence alt">' + cloze(s2, card.word, 'fill') + '</p>' : '');
+  } else {
+    f = '<div class="qa-q">' + esc(card.q) + '</div>';
+    b = '<p class="small-q">' + esc(card.q) + '</p><div class="qa-a">' + esc(card.a) + '</div>';
+  }
+  return '<div class="face front">' + tag + '<div class="body">' + f + '</div></div><div class="face back" aria-hidden="true">' + tag + '<div class="body">' + b + '</div></div>';
+}
+
+function actionsHTML(){
+  return S.session.flipped
+    ? '<button class="btn-big bad" data-act="bad">Не знал</button><button class="btn-big good" data-act="good">Знал</button>'
+    : '<button class="btn-big show" data-act="flip">Показать ответ</button>';
+}
+
+function renderStudy(){
+  const ses = S.session, app = $('#app');
+  if (!ses){ S.view = { name:'home' }; return render(); }
+  let item = ses.queue[0], deck, card;
+  while (item){
+    deck = S.decks[item.deck]; card = deck && (deck.cards || []).find(c => c.id === item.card);
+    if (card) break;
+    ses.queue.shift(); item = ses.queue[0];
+  }
+  if (!item){ app.innerHTML = doneHTML(); return; }
+  const total = ses.done + ses.queue.length, pct = total ? Math.round(ses.done / total * 100) : 0;
+  app.innerHTML = '<div class="study" style="--c:' + colorOf(deck) + '">' +
+    '<div class="sbar"><button class="icon-btn" data-act="close" aria-label="Закончить">' + ICON.close + '</button>' +
+    '<div class="pbar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><div style="width:' + pct + '%"></div></div>' +
+    '<span class="left" title="осталось">' + ses.queue.length + '</span>' +
+    '<button class="icon-btn" data-act="undo" aria-label="Отменить последний ответ"' + (ses.undo ? '' : ' disabled') + '>' + ICON.undo + '</button></div>' +
+    '<div class="stage"><div class="swipe enter"><div class="card3d' + (ses.flipped ? ' flipped' : '') + '" data-act="flip">' + facesHTML(deck, card, progOf(item.deck).cards[card.id]) + '</div></div></div>' +
+    '<div class="actions">' + actionsHTML() + '</div>' +
+    '<p class="hint-keys">Пробел — перевернуть, 1 — не знал, 2 — знал</p></div>';
+  bindSwipe();
+}
+
+function doneHTML(){
+  const ses = S.session, st = streakInfo();
+  let h = '<div class="done">';
+  if (!ses.done){ h += '<h1>На сегодня всё</h1><p>Карточек к повторению нет. Загляни завтра.</p>'; }
+  else {
+    h += '<h1>Готово</h1><p>Ответов: ' + ses.done + ', из них «знал»: ' + ses.good + '.</p>';
+    if (S.settings.streak) h += '<p>' + (st.todayDone ? 'День засчитан. Серия: ' + st.streak + ' ' + plural(st.streak, 'день', 'дня', 'дней') + '.' : 'До зачёта дня осталось ' + Math.max(0, S.settings.goal - st.todayN) + ' ответов.') + '</p>';
+  }
+  return h + '<button class="primary" data-act="finish">На главную</button></div>';
+}
+
+/* ---------- study logic ---------- */
+function startStudy(ids, from){
+  const q = buildQueue(ids);
+  S.session = { queue:q, done:0, good:0, flipped:false, undo:null, from:from };
+  S.view = { name:'study' }; render(); window.scrollTo(0, 0);
+}
+function endStudy(){
+  const from = S.session && S.session.from;
+  S.session = null; W.flushAll(); saveLocalNow();
+  S.view = from && from.name === 'deck' && S.decks[from.id] ? from : { name:'home' };
+  render(); window.scrollTo(0, 0);
+}
+function flip(){
+  const ses = S.session; if (!ses || !ses.queue.length) return;
+  ses.flipped = !ses.flipped;
+  const c = $('.card3d'); if (c) c.classList.toggle('flipped', ses.flipped);
+  const fr = $('.face.front'), bk = $('.face.back');
+  if (fr && bk){ fr.setAttribute('aria-hidden', ses.flipped ? 'true' : 'false'); bk.setAttribute('aria-hidden', ses.flipped ? 'false' : 'true'); }
+  const a = $('.actions'); if (a) a.innerHTML = actionsHTML();
+}
+function answer(good){
+  const ses = S.session; if (!ses || !ses.flipped) return;
+  const item = ses.queue[0]; if (!item) return;
+  const today = dayIndex(), now = Date.now(), key = String(today);
+  const p = progOf(item.deck), prev = p.cards[item.card];
+  ses.undo = { item, prev:prev ? Object.assign({}, prev) : null, nd:p.nd ? Object.assign({}, p.nd) : null,
+    queue:ses.queue.slice(), done:ses.done, good:ses.good, day:S.stats.days[key] ? Object.assign({}, S.stats.days[key]) : null, key };
+  const e = prev ? Object.assign({}, prev) : { s:0 };
+  if (!e.s){ const nd = p.nd && p.nd.day === today ? Object.assign({}, p.nd) : { day:today, n:0 }; nd.n++; p.nd = nd; }
+  ses.queue.shift();
+  let requeue = -1;
+  if (e.s !== 2){
+    const steps = e.rl ? 1 : 2;
+    if (good){
+      e.st = (e.st || 0) + 1;
+      if (e.st >= steps){ e.s = 2; if (!e.rl) e.iv = 1; e.e = e.e || 2.5; e.d = today + e.iv; delete e.st; delete e.rl; delete e.ts; }
+      else { e.s = 1; e.ts = now + 10 * 60e3; requeue = 5; }
+    } else { e.s = 1; e.st = 0; e.ts = now + 60e3; requeue = 3; }
+  } else {
+    e.r = (e.r || 0) + 1;
+    if (good){ const fuzz = 1 + (Math.random() * 0.1 - 0.05); e.iv = Math.max((e.iv || 1) + 1, Math.round((e.iv || 1) * (e.e || 2.5) * fuzz)); e.d = today + e.iv; }
+    else { e.l = (e.l || 0) + 1; e.e = Math.max(1.3, (e.e || 2.5) - 0.2); e.iv = Math.max(1, Math.round((e.iv || 1) * 0.3)); e.s = 1; e.st = 0; e.rl = 1; e.ts = now + 60e3; requeue = 3; }
+  }
+  const deck = S.decks[item.deck]; if (deck && typeOf(deck) === 'en') e.k = (e.k || 0) + 1;
+  e.t = now;
+  p.cards[item.card] = e;
+  if (requeue >= 0) ses.queue.splice(Math.min(requeue, ses.queue.length), 0, item);
+  ses.done++; if (good) ses.good++;
+  const day = Object.assign({ n:0 }, S.stats.days[key]); day.n++;
+  if (day.n >= S.settings.goal || !ses.queue.length) day.done = true;
+  S.stats = { days:Object.assign({}, S.stats.days, { [key]:day }) };
+  persistProg(item.deck); persistStats();
+  ses.flipped = false; renderStudy();
+}
+function undo(){
+  const ses = S.session, u = ses && ses.undo; if (!u) return;
+  const p = progOf(u.item.deck), now = Date.now();
+  p.cards[u.item.card] = u.prev ? Object.assign({}, u.prev, { t:now }) : { s:0, t:now };
+  p.nd = u.nd;
+  ses.queue = u.queue; ses.done = u.done; ses.good = u.good; ses.undo = null; ses.flipped = false;
+  const days = Object.assign({}, S.stats.days); if (u.day) days[u.key] = u.day; else delete days[u.key];
+  S.stats = { days };
+  persistProg(u.item.deck); persistStats(); renderStudy();
+}
+function maybeAutoDone(){
+  if (!S.tried || (S.online && !S.decksLoaded)) return;
+  const today = dayIndex(), d = S.stats.days[today]; if (d && d.done) return;
+  let total = 0, due = 0; for (const id in S.decks){ const c = deckCounts(id, false); total += c.total; due += c.today; }
+  if (total > 0 && due === 0){ S.stats = { days:Object.assign({}, S.stats.days, { [today]:{ n:(d && d.n) || 0, done:true } }) }; persistStats(); }
+}
+
+let suppressClick = false;
+function bindSwipe(){
+  const sw = $('.swipe'); if (!sw) return;
+  sw.addEventListener('animationend', () => sw.classList.remove('enter'), { once:true });
+  let x0 = 0, y0 = 0, dx = 0, active = false, horiz = false;
+  sw.addEventListener('pointerdown', ev => { if (!S.session || !S.session.flipped) return; x0 = ev.clientX; y0 = ev.clientY; dx = 0; active = true; horiz = false; });
+  sw.addEventListener('pointermove', ev => {
+    if (!active) return; const mx = ev.clientX - x0, my = ev.clientY - y0;
+    if (!horiz){ if (Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my)) horiz = true; else if (Math.abs(my) > 12){ active = false; return; } else return; }
+    dx = mx; sw.style.transition = 'none'; sw.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 28) + 'deg)';
+    sw.dataset.dir = dx > 50 ? 'good' : dx < -50 ? 'bad' : '';
+  });
+  const end = () => {
+    if (!active) return; active = false; sw.style.transition = '';
+    if (horiz) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 350); }
+    if (horiz && Math.abs(dx) > 90) answer(dx > 0);
+    else { sw.style.transform = ''; sw.dataset.dir = ''; }
+  };
+  sw.addEventListener('pointerup', end); sw.addEventListener('pointercancel', end);
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html, onSubmit){
+  const el = $('#sheet');
+  el.innerHTML = '<div class="sheet-wrap" data-close="1"><form class="sheet" novalidate>' + html + '</form></div>';
+  const form = $('form', el);
+  form.addEventListener('submit', ev => { ev.preventDefault(); onSubmit(form, ev.submitter); });
+  const first = $('input,textarea,select', form); if (first && matchMedia('(hover:hover)').matches) first.focus();
+}
+function closeSheet(){ $('#sheet').innerHTML = ''; }
+$('#sheet').addEventListener('click', ev => {
+  if (ev.target.matches('.sheet-wrap') || ev.target.closest('[data-close-btn]')) closeSheet();
+});
+
+function deckOptions(sel){
+  const out = ['<option value="">Верхний уровень</option>'];
+  const walk = (pid, depth) => { if (depth > 5) return; for (const d of childrenOf(pid)){ out.push('<option value="' + esc(d.id) + '"' + (d.id === sel ? ' selected' : '') + '>' + '\u00A0\u00A0'.repeat(depth) + esc(d.name) + '</option>'); walk(d.id, depth + 1); } };
+  walk(null, 0); return out.join('');
+}
+function openDeckForm(parentId){
+  const parent = parentId && S.decks[parentId], t0 = parent ? typeOf(parent) : 'kz';
+  const typeOpts = Object.keys(TYPES).map(k => '<option value="' + k + '"' + (k === t0 ? ' selected' : '') + '>' + TYPES[k].label + '</option>').join('');
+  openSheet('<h2>Новая колода</h2>' +
+    '<label>Название<input name="name" maxlength="80" autocomplete="off" placeholder="Например, СОЧ 2 четверть"></label>' +
+    '<label>Тип карточек<select name="type">' + typeOpts + '</select></label>' +
+    '<label>Где лежит<select name="parent">' + deckOptions(parentId || '') + '</select></label>' +
+    '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Отмена</button><button class="btn dark">Создать</button></div>',
+    form => {
+      const F = n => form.elements.namedItem(n);
+      const name = F('name').value.trim(); if (!name){ toast('Впиши название колоды.'); return; }
+      const maxOrder = Object.values(S.decks).reduce((m, d) => Math.max(m, d.order || 0), 0);
+      const d = { id:uid36('d'), name, type:F('type').value, parent:F('parent').value || null, order:maxOrder + 1, cards:[] };
+      saveDeck(d); closeSheet(); S.view = { name:'deck', id:d.id }; render(); window.scrollTo(0, 0);
+    });
+}
+function openCardForm(deckId){
+  const d = S.decks[deckId]; if (!d) return; const t = typeOf(d);
+  let f;
+  if (t === 'kz') f = '<label>По-русски<input name="ru" autocomplete="off"></label><label>Қазақша<input name="kz" autocomplete="off" lang="kk"></label><label>Заметка, если нужна<input name="note" autocomplete="off"></label>';
+  else if (t === 'kzru') f = '<label>Қазақша<input name="kz" autocomplete="off" lang="kk"></label><label>По-русски<input name="ru" autocomplete="off"></label><label>Заметка, если нужна<input name="note" autocomplete="off"></label>';
+  else if (t === 'en') f = '<label>Слово<input name="word" autocomplete="off" autocapitalize="off" lang="en"></label>' +
+    '<label>Транскрипция<input name="ipa" autocomplete="off" placeholder="/ˈstʌbən/"></label>' +
+    '<label>Перевод<input name="ru" autocomplete="off"></label>' +
+    '<label>Пояснение на английском<input name="def" autocomplete="off" lang="en" placeholder="unwilling to change your opinion"></label>' +
+    '<label>Предложения, по одному на строку<textarea name="sentences" lang="en" placeholder="He was too {stubborn} to say sorry."></textarea></label>' +
+    '<p class="help">Слово в предложении возьми в фигурные скобки: на карточке на его месте будет пропуск.</p>';
+  else f = '<label>Вопрос<textarea name="q"></textarea></label><label>Ответ<textarea name="a"></textarea></label>';
+  openSheet('<h2>Карточка в «' + esc(d.name) + '»</h2>' + f +
+    '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Готово</button><button class="btn dark">Добавить</button></div>',
+    form => {
+      const v = n => { const el = form.elements.namedItem(n); return el ? el.value.trim() : ''; };
+      let c;
+      if (t === 'kz' || t === 'kzru'){ if (!v('ru') || !v('kz')){ toast('Нужны оба поля: русский и казахский.'); return; } c = { ru:v('ru'), kz:v('kz') }; if (v('note')) c.note = v('note'); }
+      else if (t === 'en'){
+        if (!v('word')){ toast('Впиши слово.'); return; }
+        c = { word:v('word'), ipa:v('ipa'), ru:v('ru'), def:v('def'), sentences:v('sentences').split('\n').map(s => s.trim()).filter(Boolean) };
+      } else { if (!v('q') || !v('a')){ toast('Нужны и вопрос, и ответ.'); return; } c = { q:v('q'), a:v('a') }; }
+      c.id = uid36('c');
+      const cur = S.decks[deckId]; if (!cur){ closeSheet(); return; }
+      saveDeck(Object.assign({}, cur, { cards:(cur.cards || []).concat([c]) }));
+      form.reset(); toast('Карточка добавлена.'); render();
+      const first = $('input,textarea', form); if (first) first.focus();
+    });
+}
+function openSettings(){
+  const st = S.settings;
+  openSheet('<h2>Настройки</h2>' +
+    '<label>Новых карточек в день на колоду<input name="np" type="number" inputmode="numeric" min="0" max="200" value="' + st.newPerDay + '"></label>' +
+    '<label>Ответов, чтобы день засчитался<input name="goal" type="number" inputmode="numeric" min="1" max="500" value="' + st.goal + '"></label>' +
+    '<p class="help">День засчитывается и тогда, когда ты повторил всё, что было на сегодня, даже если ответов меньше.</p>' +
+    '<label class="check"><input type="checkbox" name="streak"' + (st.streak ? ' checked' : '') + '>Показывать серию дней</label>' +
+    '<p class="help">Пропуск дня не обнуляет серию, пока на неделе есть заморозки: их две. «Выучено» — карточки, которые ты помнишь хотя бы неделю.</p>' +
+    '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Отмена</button><button class="btn dark">Сохранить</button></div>',
+    form => {
+      const F = n => form.elements.namedItem(n);
+      const np = Math.max(0, Math.min(200, parseInt(F('np').value, 10) || 0));
+      const goal = Math.max(1, Math.min(500, parseInt(F('goal').value, 10) || 1));
+      S.settings = { newPerDay:np, goal, streak:F('streak').checked, t:Date.now() };
+      persistSettings(); closeSheet(); render();
+    });
+}
+
+async function deleteDeck(id){
+  const d = S.decks[id]; if (!d) return;
+  const ids = descendants(id);
+  if (!confirm('Удалить «' + d.name + '»' + (ids.length > 1 ? ' вместе с подколодами' : '') + '? Карточки и прогресс по ним пропадут.')) return;
+  const next = Object.assign({}, S.decks);
+  for (const x of ids){
+    W.pending.delete('decks/' + x); delete next[x]; delete S.prog[x];
+    if (S.db){
+      try { await S.db.doc('decks/' + x).delete(); } catch (e) { toast('Не удалось удалить колоду: нет прав.'); return; }
+      if (S.uid){ W.pending.delete(progPath(x)); try { await S.db.doc(progPath(x)).delete(); } catch (e) {} }
+    }
+  }
+  S.decks = next; saveLocal();
+  S.view = d.parent && S.decks[d.parent] ? { name:'deck', id:d.parent } : { name:'home' }; render();
+}
+function deleteCard(deckId, cardId){
+  const d = S.decks[deckId]; if (!d) return;
+  const card = (d.cards || []).find(c => c.id === cardId); if (!card) return;
+  const s = cardSummary(typeOf(d), card);
+  if (!confirm('Удалить карточку «' + s[0] + '»?')) return;
+  saveDeck(Object.assign({}, d, { cards:d.cards.filter(c => c.id !== cardId) }));
+  const p = S.prog[deckId]; if (p && p.cards[cardId]){ delete p.cards[cardId]; persistProg(deckId); }
+  render();
+}
+
+/* ---------- events ---------- */
+$('#app').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const act = b.dataset.act, id = b.dataset.id;
+  switch (act){
+    case 'settings': openSettings(); break;
+    case 'home': S.view = { name:'home' }; render(); window.scrollTo(0, 0); break;
+    case 'open-deck': S.view = { name:'deck', id }; render(); window.scrollTo(0, 0); break;
+    case 'study-all': startStudy(Object.keys(S.decks), { name:'home' }); break;
+    case 'study-deck': startStudy(descendants(id), { name:'deck', id }); break;
+    case 'add-deck': openDeckForm(b.dataset.parent || null); break;
+    case 'add-card': openCardForm(id); break;
+    case 'del-card': deleteCard(b.dataset.deck, b.dataset.card); break;
+    case 'del-deck': deleteDeck(id); break;
+    case 'flip': if (suppressClick) return; flip(); break;
+    case 'good': answer(true); break;
+    case 'bad': answer(false); break;
+    case 'undo': undo(); break;
+    case 'close': case 'finish': endStudy(); break;
+  }
+});
+document.addEventListener('keydown', ev => {
+  if ($('#sheet').innerHTML){ if (ev.key === 'Escape') closeSheet(); return; }
+  if (S.view.name !== 'study' || !S.session) return;
+  if (ev.target.closest && ev.target.closest('input,textarea,select')) return;
+  if (ev.key === ' ' || ev.key === 'Enter'){ ev.preventDefault(); if (S.session.queue.length) flip(); else endStudy(); }
+  else if ((ev.key === '1' || ev.key === 'ArrowLeft') && S.session.flipped) answer(false);
+  else if ((ev.key === '2' || ev.key === 'ArrowRight') && S.session.flipped) answer(true);
+  else if (ev.key === 'Escape') endStudy();
+  else if ((ev.key === 'z' || ev.key === 'я') && (ev.metaKey || ev.ctrlKey)) undo();
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden'){ W.flushAll(); saveLocalNow(); } });
+window.addEventListener('pagehide', () => { W.flushAll(); saveLocalNow(); });
+
+render();
+connect();
+})();
+</script>
+</body>
+</html>

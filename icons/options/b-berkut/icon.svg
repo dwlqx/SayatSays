@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0F4C5E"/><stop offset="1" stop-color="#062430"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD54F"/><stop offset=".55" stop-color="#F7B21B"/><stop offset="1" stop-color="#E08A0B"/></linearGradient>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<!-- sun ring -->
+<circle cx="560" cy="430" r="330" fill="none" stroke="#FFC531" stroke-opacity=".16" stroke-width="18"/>
+<!-- head and neck, nape hackles on the left -->
+<path fill="url(#gold)" d="M262 1024 L284 930 L214 916 L276 862 L196 838 L264 786 L186 754 L258 708 L192 666 L268 632
+ C262 470 352 302 520 258 C604 236 666 270 700 330
+ L700 462 C676 520 664 590 674 668 C686 780 724 900 782 1024 Z"/>
+<!-- beak: dark hook -->
+<path fill="#16242B" d="M694 330 C772 304 858 340 878 426 C892 490 870 548 828 580 C834 536 822 500 792 482 C760 466 724 462 694 462 Z"/>
+<!-- cere: yellow base of the beak -->
+<path fill="#FFC531" d="M692 330 C714 318 738 312 760 314 C744 360 740 410 748 462 L692 462 Z"/>
+<!-- mouth line -->
+<path fill="none" stroke="#9A5A06" stroke-width="12" stroke-linecap="round" d="M712 468 C680 470 652 462 632 448"/>
+<!-- brow and eye -->
+<path fill="#062430" d="M520 346 C576 310 660 306 722 334 C664 332 610 344 566 374 Z"/>
+<circle cx="618" cy="384" r="36" fill="#062430"/>
+<circle cx="628" cy="373" r="12" fill="#FFF3CF"/>
+</svg>
