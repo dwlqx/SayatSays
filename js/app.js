@@ -10,6 +10,7 @@ import { makeBackup, backupFileName, parseBackup, dataForRestore } from './backu
 import { dayIndex, weekOf, streakInfo } from './streak.js';
 import { review, isNew } from './scheduler.js';
 import { typeOf, uid36, childrenOf, descendants, deckCounts, buildQueue, parseDeckFile, mergeDecks } from './decks.js';
+import { VERSION } from './version.js';
 
 /* ---------- helpers ---------- */
 const $ = (s, r) => (r || document).querySelector(s);
@@ -90,6 +91,7 @@ async function init() {
     S.error = (e && e.message) || String(e);
   }
   render();
+  if (S.ready && inIosSafari && !S.meta.installHintAt) showInstallHint();
 }
 
 /* ---------- rendering ---------- */
@@ -451,7 +453,9 @@ function openSettings() {
       '<button type="button" class="btn ghost" data-data="import">Импортировать колоды</button>' +
     '</div>' +
     '<p class="help" style="margin-top:12px">Импорт — файл в формате decks.json. Колоды с тем же id дополняются новыми карточками, прогресс не теряется.</p>' +
-    '<input type="file" accept=".json,application/json" hidden data-file>',
+    '<input type="file" accept=".json,application/json" hidden data-file>' +
+    (inIosSafari ? '<button type="button" class="link" style="padding-left:0" data-install-hint>Как установить на экран «Домой»</button>' : '') +
+    '<p class="version">SayatSays, версия ' + VERSION + '</p>',
     form => {
       const F = n => form.elements.namedItem(n);
       const np = Math.max(0, Math.min(200, parseInt(F('np').value, 10) || 0));
@@ -465,6 +469,7 @@ function openSettings() {
   const fileInput = $('[data-file]', form);
   let fileMode = null;
   form.addEventListener('click', ev => {
+    if (ev.target.closest('[data-install-hint]')) { showInstallHint(); return; }
     const b = ev.target.closest('[data-data]'); if (!b) return;
     if (b.dataset.data === 'backup') doBackup();
     else { fileMode = b.dataset.data; fileInput.value = ''; fileInput.click(); }
@@ -598,4 +603,65 @@ document.addEventListener('keydown', ev => {
   else if ((ev.key === 'z' || ev.key === 'я') && (ev.metaKey || ev.ctrlKey)) undo();
 });
 
+/* ---------- установка на экран «Домой» и обновления ---------- */
+
+// Открыто в Safari на iPhone или iPad, а не с экрана «Домой». Свойство navigator.standalone есть только
+// в Safari на iOS: false — обычная вкладка, true — приложение с экрана «Домой». В других браузерах его нет.
+const inIosSafari = navigator.standalone === false;
+
+// Подсказка, как поставить приложение на экран «Домой». Сама показывается один раз, потом — из настроек.
+function showInstallHint() {
+  S.meta = { ...S.meta, key: 'meta', installHintAt: Date.now() };
+  saved(S.db.write(['settings'], s => s.settings.put(S.meta)));
+  openSheet('<h2>Установи на экран «Домой»</h2>' +
+    '<p class="lead">Так SayatSays откроется как обычное приложение: на весь экран, со своей иконкой и без интернета.</p>' +
+    '<ol class="steps">' +
+      '<li>Нажми «Поделиться» — квадрат со стрелкой вверх. В новых iOS он может быть в меню «•••».</li>' +
+      '<li>Выбери «На экран Домой» и нажми «Добавить».</li>' +
+      '<li>Дальше открывай SayatSays иконкой с экрана «Домой».</li>' +
+    '</ol>' +
+    '<p class="help">Важно: у Safari и у приложения на экране «Домой» разные данные, прогресс отсюда сам туда не перейдёт. ' +
+    'Если ты уже занимался здесь, в Safari, сделай резервную копию (Настройки → Данные) и восстанови её в приложении.</p>' +
+    '<div class="row"><button class="btn dark">Понятно</button></div>',
+    () => closeSheet());
+}
+
+// Service worker (sw.js) хранит приложение на устройстве и скачивает новые версии.
+// Новая версия сначала ждёт: показываем плашку, и по «Обновить» включаем её и перезагружаем страницу.
+let reloadOnUpdate = false;
+async function setupServiceWorker() {
+  // Service worker работает только по https и на localhost. По http с другого компьютера его не будет.
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('./sw.js');
+    // controller есть, если страницей уже управляет прошлая версия, — значит, это обновление, а не первая установка.
+    const offer = () => { if (reg.waiting && navigator.serviceWorker.controller) showUpdateBar(reg.waiting); };
+    offer();
+    reg.addEventListener('updatefound', () => {
+      const sw = reg.installing;
+      if (sw) sw.addEventListener('statechange', () => { if (sw.state === 'installed') offer(); });
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloadOnUpdate) location.reload(); });
+    // iPhone сам проверяет обновления редко, поэтому проверяем каждый раз, когда возвращаешься в приложение.
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  } catch (e) {
+    console.error('Service worker не зарегистрировался', e);
+  }
+}
+
+function showUpdateBar(worker) {
+  if ($('#update-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'update-bar';
+  bar.setAttribute('role', 'status');
+  bar.innerHTML = '<span>Доступно обновление</span><button type="button">Обновить</button>';
+  bar.querySelector('button').addEventListener('click', ev => {
+    ev.currentTarget.disabled = true;
+    reloadOnUpdate = true;
+    worker.postMessage('skipWaiting'); // sw.js включит новую версию, после этого сработает controllerchange
+  });
+  document.body.appendChild(bar);
+}
+
 init();
+setupServiceWorker();

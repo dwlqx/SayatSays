@@ -198,3 +198,17 @@ mark{background:color-mix(in srgb, var(--c) 24%, transparent);color:inherit;bord
 /* Поле выбора файла скрыто — его открывают кнопки «Восстановить» и «Импортировать».
    Без этого правило .sheet input{display:block} выше перебило бы атрибут hidden. */
 .sheet input[type=file]{display:none}
+.sheet .version{margin:18px 0 0;font-size:.8rem;color:var(--muted);text-align:center}
+
+/* ---------- новое: подсказка про установку ---------- */
+.sheet .lead{margin:0 0 12px;line-height:1.5}
+.steps{margin:0 0 16px;padding-left:22px;line-height:1.5}
+.steps li{margin-bottom:8px}
+
+/* ---------- новое: плашка «Доступно обновление» ----------
+   Внизу экрана; во время занятия скрыта, чтобы не закрывать кнопки «Не знал» / «Знал». */
+#update-bar{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:calc(100% - 32px);max-width:528px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--ink);color:var(--bg);padding:10px 10px 10px 16px;border-radius:16px;box-shadow:var(--shadow);z-index:25}
+#update-bar button{border:0;border-radius:11px;background:var(--bg);color:var(--ink);font-weight:600;padding:10px 16px;cursor:pointer}
+#update-bar button:disabled{opacity:.6}
+#app.is-study ~ #update-bar{display:none}
+body:has(#update-bar) #app:not(.is-study){padding-bottom:100px} /* чтобы плашка не закрывала последнюю колоду */
