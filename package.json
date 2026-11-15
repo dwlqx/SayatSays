@@ -1,0 +1,12 @@
+{
+  "name": "sayatsays",
+  "private": true,
+  "description": "Карточки для интервального повторения. Сборщика нет: package.json нужен только для тестов.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.5"
+  }
+}
