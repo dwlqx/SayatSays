@@ -16,6 +16,9 @@
 //              В резервную копию не входят.
 //
 // Версии базы: 1 — первые пять хранилищ (задача 1); 2 — добавлено snapshots (задача 3).
+//
+// Эту же базу читает sw.js, когда приходит напоминание (decks, cardState, stats за сегодня, settings 'prefs').
+// Если поменяешь, как там хранятся данные, — поправь и sw.js (тест tests/push.test.js подскажет).
 
 export const DB_NAME = 'sayatsays';
 export const DB_VERSION = 2;

@@ -9,8 +9,9 @@ import { seedIfNeeded, migrateToFsrs } from './migrate.js';
 import { makeBackup, backupFileName, parseBackup, dataForRestore } from './backup.js';
 import { dayIndex, weekOf, streakInfo } from './streak.js';
 import { makeScheduler, preview, formatInterval, DEFAULT_RETENTION } from './scheduler.js';
-import { typeOf, uid36, childrenOf, descendants, deckCounts, fsrsOf, parseDeckFile, mergeDecks } from './decks.js';
+import { typeOf, uid36, childrenOf, descendants, deckCounts, todayTotal, fsrsOf, parseDeckFile, mergeDecks } from './decks.js';
 import { startSession, nextItem, dropItem, leftInSession, answerCard, undoAnswer } from './study.js';
+import { pushStatus, currentSubscription, subscriptionText, enablePush, testReminder, setBadge } from './push.js';
 import { VERSION } from './version.js';
 
 /* ---------- helpers ---------- */
@@ -116,7 +117,7 @@ function render() {
   const v = S.view;
   app.className = v.name === 'study' ? 'is-study' : '';
   if (v.name === 'deck' && !S.decks[v.id]) S.view = { name: 'home' };
-  if (S.view.name === 'home') { app.innerHTML = homeHTML(); if (maybeAutoDone()) app.innerHTML = homeHTML(); }
+  if (S.view.name === 'home') { app.innerHTML = homeHTML(); if (maybeAutoDone()) app.innerHTML = homeHTML(); updateBadge(); }
   else if (S.view.name === 'deck') app.innerHTML = deckHTML(S.view.id);
   else if (S.view.name === 'study') renderStudy();
 }
@@ -155,8 +156,7 @@ function rowsHTML(pid, depth) {
 
 function homeHTML() {
   const ids = Object.keys(S.decks), today = dayIndex();
-  let all = 0;
-  for (const id of ids) all += deckCounts(S, id, false, today).today;
+  const all = todayTotal(S, today);
   let h = '<header class="top"><h1 class="brand">SayatSays</h1><button class="icon-btn" data-act="settings" aria-label="Настройки">' + ICON.gear + '</button></header>';
   h += streakHTML();
   if (!ids.length) {
@@ -451,6 +451,8 @@ function openSettings() {
       '90 % — хороший выбор. Новое значение действует со следующих ответов.</p>' +
     '<p class="help">«Выучено» — карточки, которые ты, по расчёту FSRS, будешь помнить хотя бы 3 недели.</p>' +
     '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Отмена</button><button class="btn dark">Сохранить</button></div>' +
+    '<h3 class="sheet-sec">Напоминания</h3>' +
+    '<div data-push-box></div>' +
     '<h3 class="sheet-sec">Данные</h3>' +
     '<p class="help">Колоды и прогресс хранятся только на этом устройстве. Время от времени делай резервную копию и сохраняй её в «Файлы» или в облако.</p>' +
     '<div data-last-backup>' + lastBackupLine() + '</div>' +
@@ -477,12 +479,15 @@ function openSettings() {
     });
 
   prepareBackup();
+  const pushBox = $('[data-push-box]', form);
+  fillPush(pushBox);
   const ret = form.elements.namedItem('ret');
   ret.addEventListener('input', () => { $('[data-ret-val]', form).textContent = ret.value + ' %'; });
   const fileInput = $('[data-file]', form);
   let fileMode = null;
   form.addEventListener('click', ev => {
     if (ev.target.closest('[data-install-hint]')) { showInstallHint(); return; }
+    const p = ev.target.closest('[data-push]'); if (p) { pushAction(p.dataset.push, pushBox); return; }
     const b = ev.target.closest('[data-data]'); if (!b) return;
     if (b.dataset.data === 'backup') doBackup();
     else if (b.dataset.data === 'snapshot') downloadSnapshot();
@@ -493,6 +498,73 @@ function openSettings() {
     const text = await file.text();
     if (fileMode === 'restore') restoreFrom(text); else importDecks(text);
   });
+}
+
+/* ---------- напоминания ---------- */
+// Как устроены напоминания — см. начало js/push.js. Здесь только раздел в настройках и число на иконке.
+
+// Число на иконке приложения — сколько карточек на сегодня, как на кнопке «Повторить всё».
+function updateBadge() { if (S.ready) setBadge(todayTotal(S, dayIndex())); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updateBadge(); });
+
+const SECRETS_URL = 'https://github.com/dwlqx/SayatSays/settings/secrets/actions';
+
+// Раздел «Напоминания» в настройках. justEnabled — только что подписались: сразу раскрыть инструкцию.
+async function fillPush(box, justEnabled) {
+  const status = pushStatus();
+  if (status === 'install') {
+    box.innerHTML = '<p class="help">Напоминания работают только в приложении с экрана «Домой».' +
+      (inIosSafari ? ' Как его установить — кнопка внизу настроек.' : '') + '</p>';
+    return;
+  }
+  if (status === 'unsupported') { box.innerHTML = '<p class="help">Здесь напоминания не работают. На iPhone нужна iOS 16.4 или новее.</p>'; return; }
+  if (status === 'denied') {
+    box.innerHTML = '<p class="help">Уведомления запрещены. Включи их: Настройки iPhone → Уведомления → SayatSays, потом открой приложение заново.</p>';
+    return;
+  }
+  let sub = null;
+  try { sub = await currentSubscription(); } catch (e) { console.error(e); }
+  if (!sub) {
+    box.innerHTML = '<p class="help">Каждый день придёт уведомление, сколько карточек ждут повторения, а на иконке появится их число.</p>' +
+      '<div class="data-btns"><button type="button" class="btn dark" data-push="enable">Включить напоминания</button></div>';
+    return;
+  }
+  box.innerHTML = '<p class="help">Напоминания включены на этом телефоне. Время задаётся на GitHub, в файле .github/workflows/reminder.yml.</p>' +
+    '<details class="push-sub"' + (justEnabled ? ' open' : '') + '><summary>Подписка для GitHub</summary>' +
+      '<ol class="steps">' +
+        '<li>Нажми «Скопировать».</li>' +
+        '<li>Открой <a href="' + SECRETS_URL + '" target="_blank" rel="noopener">секреты репозитория на GitHub</a> и нажми «New repository secret».</li>' +
+        '<li>Name: <b>PUSH_SUBSCRIPTION</b>, в Secret вставь скопированное, нажми «Add secret». ' +
+          'Если такой секрет уже есть — нажми карандаш рядом с ним и вставь новое.</li>' +
+        '<li>Проверь: на GitHub открой Actions → «Напоминание» → «Run workflow».</li>' +
+      '</ol>' +
+      '<textarea readonly data-sub-text>' + esc(subscriptionText(sub)) + '</textarea>' +
+      '<div class="data-btns">' +
+        '<button type="button" class="btn dark" data-push="copy">Скопировать</button>' +
+        '<button type="button" class="btn ghost" data-push="renew">Создать новую подписку</button>' +
+      '</div>' +
+      '<p class="help" style="margin-top:12px">Новая подписка нужна, если GitHub пишет «подписка устарела». После неё обнови секрет PUSH_SUBSCRIPTION.</p>' +
+    '</details>' +
+    '<div class="data-btns"><button type="button" class="btn ghost" data-push="test">Проверить уведомление</button></div>';
+}
+
+function pushAction(act, box) {
+  if (act === 'enable' || act === 'renew') {
+    if (act === 'renew' && !confirm('Старая подписка перестанет работать, и секрет PUSH_SUBSCRIPTION на GitHub нужно будет обновить. Создать новую?')) return;
+    // enablePush вызываем сразу из нажатия: иначе iPhone не покажет вопрос о разрешении.
+    enablePush(act === 'renew')
+      .then(() => { fillPush(box, true); updateBadge(); toast('Напоминания включены. Осталось добавить подписку на GitHub.'); })
+      .catch(e => { console.error(e); toast((e && e.message) || 'Не получилось включить напоминания.'); fillPush(box); });
+  } else if (act === 'copy') {
+    const area = $('[data-sub-text]', box);
+    navigator.clipboard.writeText(area.value)
+      .then(() => toast('Скопировано. Теперь вставь на GitHub.'))
+      .catch(() => { area.focus(); area.select(); toast('Не получилось скопировать само — текст выделен, скопируй его.'); });
+  } else if (act === 'test') {
+    testReminder()
+      .then(() => toast('Готово. Если уведомления не видно — смахни вниз от верхнего края экрана.'))
+      .catch(e => { console.error(e); toast('Не получилось: ' + ((e && e.message) || e)); });
+  }
 }
 
 /* ---------- данные: копия, восстановление, импорт ---------- */
