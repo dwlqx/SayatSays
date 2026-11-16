@@ -24,9 +24,9 @@ test('все файлы из списка sw.js существуют', () => {
 
 test('в списке sw.js есть все файлы приложения', () => {
   const need = ['./', './index.html', './manifest.webmanifest'];
-  for (const dir of ['css', 'js', 'fonts', 'data']) {
+  for (const dir of ['css', 'js', 'fonts', 'data', 'vendor']) {
     for (const name of readdirSync(new URL(dir + '/', root))) {
-      if (dir === 'fonts' && !name.endsWith('.woff2')) continue; // лицензии офлайн не нужны
+      if (name.endsWith('.txt')) continue; // тексты лицензий офлайн не нужны
       need.push('./' + dir + '/' + name);
     }
   }

@@ -10,6 +10,12 @@ export function dayIndex(ts = Date.now()) {
   return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY);
 }
 
+// Обратно: когда начинается учебный день d — в 4:00 по местному времени (мс).
+export function dayStart(d) {
+  const u = new Date(d * DAY); // полночь по UTC того же календарного числа
+  return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), 4).getTime();
+}
+
 // Номер недели. Недели начинаются с понедельника: день 0 (1 января 1970) был четвергом, отсюда «+ 3».
 export const weekOf = i => Math.floor((i + 3) / 7);
 

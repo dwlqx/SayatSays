@@ -3,17 +3,23 @@
 // Здесь тонкая обёртка без библиотек. IndexedDB сообщает о результатах событиями (onsuccess, onerror),
 // а мы превращаем их в Promise, чтобы писать await.
 //
-// Хранилища (object stores), версия базы 1:
+// Хранилища (object stores):
 //   decks      колоды целиком, как в data/decks.json; ключ — id колоды
-//   cardState  состояние карточки { deck, card, sm2: {…} }; ключ — пара [deck, card]
-//              (в разных колодах id карточек могут совпасть, поэтому ключ из двух частей)
-//   reviewLog  журнал ответов; ключ id — номер по порядку (начнём заполнять в задаче 3)
-//   settings   { key: 'prefs', newPerDay, goal, streak } — настройки
-//              { key: 'meta', seededAt, lastBackupAt }  — служебное: когда загружены исходные данные и сделана копия
+//   cardState  состояние карточки { deck, card, fsrs: {…}, sm2?: {…}, k?: номер примера }; ключ — пара [deck, card]
+//              (в разных колодах id карточек могут совпасть, поэтому ключ из двух частей).
+//              fsrs — расписание сейчас (см. scheduler.js); sm2 — старое состояние из артефакта, хранится как было.
+//   reviewLog  журнал ответов { id, deck, card, rating, review, …состояние до ответа }; ключ id — время ответа в мс
+//   settings   { key: 'prefs', newPerDay, goal, streak, retention } — настройки
+//              { key: 'meta', seededAt, fsrsAt, lastBackupAt, … } — служебное: когда что произошло
 //   stats      по дням { day, n, done, nw: { [id колоды]: сколько новых карточек взято } }; ключ — номер дня
+//   snapshots  снимки всей базы перед большими изменениями (сейчас один — перед переходом на FSRS); ключ id.
+//              В резервную копию не входят.
+//
+// Версии базы: 1 — первые пять хранилищ (задача 1); 2 — добавлено snapshots (задача 3).
 
 export const DB_NAME = 'sayatsays';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
+// Хранилища, которые входят в резервную копию.
 export const STORES = ['decks', 'cardState', 'reviewLog', 'settings', 'stats'];
 
 const promisify = request => new Promise((resolve, reject) => {
@@ -22,21 +28,25 @@ const promisify = request => new Promise((resolve, reject) => {
 });
 
 // Открыть базу. factory — сам IndexedDB (в тестах подставляется ненастоящий, из пакета fake-indexeddb).
-export function openDB(factory = globalThis.indexedDB, name = DB_NAME) {
+// version можно указать в тестах, чтобы создать базу старой версии и проверить обновление.
+export function openDB(factory = globalThis.indexedDB, name = DB_NAME, version = DB_VERSION) {
   return new Promise((resolve, reject) => {
     if (!factory) { reject(new Error('Этот браузер не умеет хранить данные (нет IndexedDB).')); return; }
-    const request = factory.open(name, DB_VERSION);
-    // Вызывается, когда базы ещё нет или у неё версия меньше DB_VERSION: здесь создаётся структура.
-    // Когда формат поменяется, поднимем DB_VERSION и добавим шаг «if (event.oldVersion < 2) { … }».
+    const request = factory.open(name, version);
+    // Вызывается, когда базы ещё нет или у неё версия меньше нужной: здесь создаётся и обновляется структура.
+    // Шаги идут по порядку: база версии 1 получит только шаг 2, новая база — оба. Данные при этом не трогаются.
     request.onupgradeneeded = event => {
-      const db = request.result;
-      if (event.oldVersion < 1) {
+      const db = request.result, from = event.oldVersion, to = event.newVersion;
+      if (from < 1) {
         db.createObjectStore('decks', { keyPath: 'id' });
         const cardState = db.createObjectStore('cardState', { keyPath: ['deck', 'card'] });
         cardState.createIndex('deck', 'deck'); // чтобы быстро найти все состояния одной колоды
         db.createObjectStore('reviewLog', { keyPath: 'id', autoIncrement: true });
         db.createObjectStore('settings', { keyPath: 'key' });
         db.createObjectStore('stats', { keyPath: 'day' });
+      }
+      if (from < 2 && to >= 2) {
+        db.createObjectStore('snapshots', { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(new DB(request.result));
