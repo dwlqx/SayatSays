@@ -212,3 +212,10 @@ mark{background:color-mix(in srgb, var(--c) 24%, transparent);color:inherit;bord
 #update-bar button:disabled{opacity:.6}
 #app.is-study ~ #update-bar{display:none}
 body:has(#update-bar) #app:not(.is-study){padding-bottom:100px} /* чтобы плашка не закрывала последнюю колоду */
+
+/* ---------- новое: FSRS ---------- */
+/* Под «Не знал» / «Знал» — через сколько карточка вернётся. */
+.btn-big small{display:block;font-size:.8rem;font-weight:500;opacity:.75;margin-top:2px;font-variant-numeric:tabular-nums}
+/* Ползунок «Целевая запоминаемость»: без рамки и фона, которые общее правило даёт полям ввода. */
+.sheet input[type=range]{padding:0;border:0;background:none;height:32px;accent-color:var(--ink)}
+.sheet label b{color:var(--ink);font-weight:600}

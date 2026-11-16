@@ -1,20 +1,13 @@
 // Колоды: импорт из файла, счётчики и очередь.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { freshDB, loadLegacy, readText } from './helpers.js';
-import { legacyToRecords, seedIfNeeded } from '../js/migrate.js';
+import { freshDB, loadLegacy, readText, legacyState } from './helpers.js';
+import { seedIfNeeded } from '../js/migrate.js';
 import { parseDeckFile, mergeDecks, contentId, descendants, deckCounts, buildQueue } from '../js/decks.js';
+import { dayStart } from '../js/streak.js';
+import { State } from '../js/scheduler.js';
 
-// Состояние S, как его собирает app.js после чтения базы.
-async function legacyState(settings = { newPerDay: 15, goal: 10, streak: true }) {
-  const { decks, progress } = await loadLegacy();
-  const rec = legacyToRecords(decks, progress);
-  const S = { decks: {}, prog: {}, days: {}, settings };
-  for (const d of rec.decks) S.decks[d.id] = d;
-  for (const r of rec.cardState) (S.prog[r.deck] || (S.prog[r.deck] = {}))[r.card] = r.sm2;
-  for (const d of rec.stats) S.days[d.day] = d;
-  return S;
-}
+const DAY_20740 = dayStart(20740) + 8 * 3600e3; // 20740-й учебный день, 12:00
 
 test('файл колод: понимает три вида и объясняет ошибки', () => {
   assert.equal(parseDeckFile(readText('decks.json')).length, 13);
@@ -29,7 +22,7 @@ test('файл колод: понимает три вида и объясняе�
 });
 
 test('импорт: новая колода целиком, в существующую — только новые карточки', async () => {
-  const S = await legacyState();
+  const S = await legacyState(DAY_20740);
   const verbs = S.decks['kz-lex-verbs'];
   const incoming = [
     { id: 'new-deck', name: 'Новая', type: 'qa', cards: [{ id: 'q1', q: '1', a: '1' }, { id: 'q2', q: '2', a: '2' }] },
@@ -76,7 +69,7 @@ test('импорт через базу не трогает прогресс', as
 });
 
 test('счётчики колод на исходных данных', async () => {
-  const S = await legacyState();
+  const S = await legacyState(DAY_20740);
   // «Казахский» + 3 подколоды, одна из которых («Лексика») содержит ещё 6
   assert.equal(descendants(S.decks, 'kz').length, 10);
   const kz = deckCounts(S, 'kz', true, 20734), en = deckCounts(S, 'en', true, 20734);
@@ -87,14 +80,15 @@ test('счётчики колод на исходных данных', async () 
 });
 
 test('очередь: изучаемые первыми, новых не больше лимита на колоду', async () => {
-  const S = await legacyState();
+  const S = await legacyState(DAY_20740);
   const today = 20740;
   const q = buildQueue(S, ['kz-lex-verbs'], today, () => 0.5);
   assert.equal(q.length, 15, 'в колоде 18 новых карточек, лимит 15');
   S.days[today] = { day: today, n: 10, done: true, nw: { 'kz-lex-verbs': 10 } };
   assert.equal(buildQueue(S, ['kz-lex-verbs'], today, () => 0.5).length, 5);
 
-  const learning = Object.entries(S.prog['en-nuet-ct']).filter(([, e]) => e.s === 1).map(([id]) => id);
+  const learning = Object.entries(S.prog['en-nuet-ct']).filter(([, r]) => r.fsrs.state === State.Learning).map(([id]) => id);
+  assert.ok(learning.length > 0, 'в колоде есть изучаемые карточки');
   const q2 = buildQueue(S, ['en-nuet-ct'], today, () => 0.5);
   assert.deepEqual(q2.slice(0, learning.length).map(x => x.card).sort(), learning.sort());
 });

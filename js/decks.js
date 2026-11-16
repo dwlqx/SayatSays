@@ -2,9 +2,9 @@
 //
 // Почти все функции получают S — состояние приложения в памяти:
 //   S.decks    { [id колоды]: { id, name, type, parent, order, cards: [...] } }
-//   S.prog     { [id колоды]: { [id карточки]: состояние SM-2 } }
+//   S.prog     { [id колоды]: { [id карточки]: запись cardState { deck, card, fsrs, sm2?, k? } } }
 //   S.days     { [номер дня]: { n, done, nw: { [id колоды]: сколько новых карточек взято } } }
-//   S.settings { newPerDay, goal, streak }
+//   S.settings { newPerDay, goal, streak, retention }
 
 import { isNew, isLearning, isLearned, isDue } from './scheduler.js';
 
@@ -38,17 +38,19 @@ export function newLeft(S, deckId, today) {
   return Math.max(0, (S.settings.newPerDay | 0) - used);
 }
 
+// Расписание карточки (поле fsrs записи) или undefined, если карточку ещё не показывали.
+export const fsrsOf = (S, deckId, cardId) => { const r = (S.prog[deckId] || {})[cardId]; return r && r.fsrs; };
+
 // Счётчики для экрана: всего, новые, изучаются, выучено и сколько карточек на сегодня.
 export function deckCounts(S, id, withKids, today) {
   const ids = withKids ? descendants(S.decks, id) : [id];
   const c = { total: 0, nw: 0, learning: 0, learned: 0, today: 0 };
   for (const x of ids) {
     const d = S.decks[x]; if (!d) continue;
-    const p = S.prog[x] || {};
     let fresh = 0;
     for (const card of (d.cards || [])) {
       c.total++;
-      const e = p[card.id];
+      const e = fsrsOf(S, x, card.id);
       if (isNew(e)) { c.nw++; fresh++; }
       else {
         if (isLearned(e)) c.learned++; else c.learning++;
@@ -65,21 +67,21 @@ function shuffle(a, random) {
   return a;
 }
 
-// Очередь занятия: сначала изучаемые (по времени), потом повторения вперемешку с новыми — три к одной.
+// Очередь занятия: сначала изучаемые (по сроку), потом повторения вперемешку с новыми — три к одной.
 export function buildQueue(S, ids, today, random = Math.random) {
   const learn = [], rev = [], fresh = [];
   for (const id of ids) {
     const d = S.decks[id]; if (!d) continue;
-    const p = S.prog[id] || {};
     let left = newLeft(S, id, today);
     for (const card of (d.cards || [])) {
-      const e = p[card.id];
+      const e = fsrsOf(S, id, card.id);
       if (isNew(e)) { if (left > 0) { fresh.push({ deck: id, card: card.id }); left--; } }
-      else if (isLearning(e)) learn.push({ deck: id, card: card.id, ts: e.ts || 0 });
-      else if (isDue(e, today)) rev.push({ deck: id, card: card.id });
+      else if (!isDue(e, today)) continue;
+      else if (isLearning(e)) learn.push({ deck: id, card: card.id, due: e.due });
+      else rev.push({ deck: id, card: card.id });
     }
   }
-  learn.sort((a, b) => a.ts - b.ts);
+  learn.sort((a, b) => a.due - b.due);
   shuffle(rev, random);
   const mixed = [];
   let i = 0, j = 0;

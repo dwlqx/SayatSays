@@ -5,11 +5,12 @@
 // интерфейс рисуется из S. Каждое изменение сразу меняет S и записывается в базу.
 
 import { openDB } from './db.js';
-import { seedIfNeeded } from './migrate.js';
+import { seedIfNeeded, migrateToFsrs } from './migrate.js';
 import { makeBackup, backupFileName, parseBackup, dataForRestore } from './backup.js';
 import { dayIndex, weekOf, streakInfo } from './streak.js';
-import { review, isNew } from './scheduler.js';
-import { typeOf, uid36, childrenOf, descendants, deckCounts, buildQueue, parseDeckFile, mergeDecks } from './decks.js';
+import { makeScheduler, preview, formatInterval, DEFAULT_RETENTION } from './scheduler.js';
+import { typeOf, uid36, childrenOf, descendants, deckCounts, fsrsOf, parseDeckFile, mergeDecks } from './decks.js';
+import { startSession, nextItem, dropItem, leftInSession, answerCard, undoAnswer } from './study.js';
 import { VERSION } from './version.js';
 
 /* ---------- helpers ---------- */
@@ -35,11 +36,12 @@ const TYPES = {
   qa: { label: 'Предмет: вопрос и ответ', color: 'var(--qa)' }
 };
 const colorOf = d => TYPES[typeOf(d)].color;
-const DEFAULT_SETTINGS = { newPerDay: 15, goal: 10, streak: true };
+const DEFAULT_SETTINGS = { newPerDay: 15, goal: 10, streak: true, retention: DEFAULT_RETENTION };
 
 // Состояние в памяти. Что лежит в decks, prog, days и settings — см. начало decks.js.
+// scheduler — планировщик FSRS с текущей целевой запоминаемостью.
 const S = {
-  db: null,
+  db: null, scheduler: makeScheduler(),
   decks: {}, prog: {}, days: {}, settings: { ...DEFAULT_SETTINGS }, meta: { key: 'meta' },
   ready: false, error: null,
   view: { name: 'home' }, session: null
@@ -52,12 +54,15 @@ async function loadAll() {
   S.decks = {};
   for (const d of decks) S.decks[d.id] = d;
   S.prog = {};
-  for (const r of cardState) (S.prog[r.deck] || (S.prog[r.deck] = {}))[r.card] = r.sm2;
+  for (const r of cardState) (S.prog[r.deck] || (S.prog[r.deck] = {}))[r.card] = r;
   S.days = {};
   for (const d of stats) S.days[d.day] = d;
   const prefs = settings.find(s => s.key === 'prefs') || {};
-  S.settings = { ...DEFAULT_SETTINGS, newPerDay: prefs.newPerDay ?? DEFAULT_SETTINGS.newPerDay, goal: prefs.goal ?? DEFAULT_SETTINGS.goal, streak: prefs.streak ?? DEFAULT_SETTINGS.streak };
+  S.settings = {};
+  for (const k in DEFAULT_SETTINGS) S.settings[k] = prefs[k] ?? DEFAULT_SETTINGS[k];
+  S.scheduler = makeScheduler(S.settings.retention);
   S.meta = settings.find(s => s.key === 'meta') || { key: 'meta' };
+  S.hasFsrsSnapshot = !!(await S.db.get('snapshots', 'before-fsrs'));
 }
 
 // Запись в базу идёт в фоне: S уже обновлён и экран нарисован. Если запись не удалась — говорим об этом.
@@ -79,11 +84,14 @@ async function loadLegacyFiles() {
 
 async function init() {
   render();
+  let seeded = false, migrated = 0;
   try {
     S.db = await openDB();
-    const seeded = await seedIfNeeded(S.db, loadLegacyFiles);
+    seeded = await seedIfNeeded(S.db, loadLegacyFiles);
     // Просим браузер не удалять данные при нехватке места. Браузер может и отказать — это не ошибка.
     if (seeded && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    // Один раз: перевести прогресс с SM-2 на FSRS (перед этим сохраняется снимок всей базы).
+    migrated = await migrateToFsrs(S.db);
     await loadAll();
     S.ready = true;
   } catch (e) {
@@ -91,6 +99,7 @@ async function init() {
     S.error = (e && e.message) || String(e);
   }
   render();
+  if (migrated && !seeded) toast('Расписание теперь считает FSRS. Копия данных до перехода — в Настройки → Данные.');
   if (S.ready && inIosSafari && !S.meta.installHintAt) showInstallHint();
 }
 
@@ -232,29 +241,33 @@ function facesHTML(deck, card, e) {
   return '<div class="face front">' + tag + '<div class="body">' + f + '</div></div><div class="face back" aria-hidden="true">' + tag + '<div class="body">' + b + '</div></div>';
 }
 
+// Кнопки ответа. Под «Не знал» и «Знал» — когда карточка вернётся, если ответить так (считает FSRS).
 function actionsHTML() {
-  return S.session.flipped
-    ? '<button class="btn-big bad" data-act="bad">Не знал</button><button class="btn-big good" data-act="good">Знал</button>'
-    : '<button class="btn-big show" data-act="flip">Показать ответ</button>';
+  const ses = S.session;
+  if (!ses.flipped) return '<button class="btn-big show" data-act="flip">Показать ответ</button>';
+  const sub = ms => ses.preview ? '<small>' + formatInterval(ms) + '</small>' : '';
+  return '<button class="btn-big bad" data-act="bad">Не знал' + sub(ses.preview && ses.preview.bad) + '</button>' +
+    '<button class="btn-big good" data-act="good">Знал' + sub(ses.preview && ses.preview.good) + '</button>';
 }
 
 function renderStudy() {
   const ses = S.session, app = $('#app');
   if (!ses) { S.view = { name: 'home' }; return render(); }
-  let item = ses.queue[0], deck, card;
-  while (item) {
-    deck = S.decks[item.deck]; card = deck && (deck.cards || []).find(c => c.id === item.card);
+  let pick, deck, card;
+  while ((pick = nextItem(ses, Date.now()))) {
+    deck = S.decks[pick.item.deck]; card = deck && (deck.cards || []).find(c => c.id === pick.item.card);
     if (card) break;
-    ses.queue.shift(); item = ses.queue[0];
+    dropItem(ses, pick); // карточку удалили, пока шло занятие
   }
-  if (!item) { app.innerHTML = doneHTML(); return; }
-  const total = ses.done + ses.queue.length, pct = total ? Math.round(ses.done / total * 100) : 0;
+  ses.current = pick;
+  if (!pick) { app.innerHTML = doneHTML(); return; }
+  const left = leftInSession(ses), total = ses.done + left, pct = total ? Math.round(ses.done / total * 100) : 0;
   app.innerHTML = '<div class="study" style="--c:' + colorOf(deck) + '">' +
     '<div class="sbar"><button class="icon-btn" data-act="close" aria-label="Закончить">' + ICON.close + '</button>' +
     '<div class="pbar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><div style="width:' + pct + '%"></div></div>' +
-    '<span class="left" title="осталось">' + ses.queue.length + '</span>' +
+    '<span class="left" title="осталось">' + left + '</span>' +
     '<button class="icon-btn" data-act="undo" aria-label="Отменить последний ответ"' + (ses.undo ? '' : ' disabled') + '>' + ICON.undo + '</button></div>' +
-    '<div class="stage"><div class="swipe enter"><div class="card3d' + (ses.flipped ? ' flipped' : '') + '" data-act="flip">' + facesHTML(deck, card, (S.prog[item.deck] || {})[card.id]) + '</div></div></div>' +
+    '<div class="stage"><div class="swipe enter"><div class="card3d' + (ses.flipped ? ' flipped' : '') + '" data-act="flip">' + facesHTML(deck, card, (S.prog[pick.item.deck] || {})[card.id]) + '</div></div></div>' +
     '<div class="actions">' + actionsHTML() + '</div>' +
     '<p class="hint-keys">Пробел — перевернуть, 1 — не знал, 2 — знал</p></div>';
   bindSwipe();
@@ -272,9 +285,9 @@ function doneHTML() {
 }
 
 /* ---------- study logic ---------- */
+// Очередь, ответы и отмена — в study.js; здесь только экран и запись в базу.
 function startStudy(ids, from) {
-  const q = buildQueue(S, ids, dayIndex());
-  S.session = { queue: q, done: 0, good: 0, flipped: false, undo: null, from: from };
+  S.session = { ...startSession(S, ids, dayIndex()), flipped: false, from };
   S.view = { name: 'study' }; render(); window.scrollTo(0, 0);
 }
 function endStudy() {
@@ -284,51 +297,40 @@ function endStudy() {
   render(); window.scrollTo(0, 0);
 }
 function flip() {
-  const ses = S.session; if (!ses || !ses.queue.length) return;
+  const ses = S.session; if (!ses || !ses.current) return;
   ses.flipped = !ses.flipped;
+  if (ses.flipped) {
+    // Время ответа считаем с момента, когда открыт ответ: тогда подписи под кнопками
+    // точно совпадут с тем, что запишется после нажатия.
+    ses.answerAt = Date.now();
+    const { item } = ses.current;
+    ses.preview = preview(S.scheduler, fsrsOf(S, item.deck, item.card), ses.answerAt);
+  }
   const c = $('.card3d'); if (c) c.classList.toggle('flipped', ses.flipped);
   const fr = $('.face.front'), bk = $('.face.back');
   if (fr && bk) { fr.setAttribute('aria-hidden', ses.flipped ? 'true' : 'false'); bk.setAttribute('aria-hidden', ses.flipped ? 'false' : 'true'); }
   const a = $('.actions'); if (a) a.innerHTML = actionsHTML();
 }
+// Ответ: новое состояние карточки, статистика дня и запись журнала — одной транзакцией.
 function answer(good) {
-  const ses = S.session; if (!ses || !ses.flipped) return;
-  const item = ses.queue[0]; if (!item) return;
-  const today = dayIndex(), now = Date.now();
-  const prog = S.prog[item.deck] || (S.prog[item.deck] = {});
-  const prev = prog[item.card] || null, prevDay = S.days[today] || null;
-  // Запоминаем, как было, — для кнопки «Отменить».
-  ses.undo = { item, prev, prevDay, today, queue: ses.queue.slice(), done: ses.done, good: ses.good };
-
-  const { next, requeue } = review(prev, good, { now, today, isEn: typeOf(S.decks[item.deck]) === 'en' });
-  prog[item.card] = next;
-  ses.queue.shift();
-  if (requeue >= 0) ses.queue.splice(Math.min(requeue, ses.queue.length), 0, item);
-  ses.done++; if (good) ses.good++;
-
-  // Статистика дня: ещё один ответ; если карточка была новой — ещё одна новая из этой колоды.
-  const day = { day: today, n: 0, done: false, ...prevDay };
-  day.n++;
-  if (isNew(prev)) day.nw = { ...day.nw, [item.deck]: ((day.nw && day.nw[item.deck]) || 0) + 1 };
-  if (day.n >= S.settings.goal || !ses.queue.length) day.done = true;
-  S.days[today] = day;
-
-  saved(S.db.write(['cardState', 'stats'], s => {
-    s.cardState.put({ deck: item.deck, card: item.card, sm2: next });
+  const ses = S.session; if (!ses || !ses.flipped || !ses.current) return;
+  const { rec, day, log } = answerCard(S, ses, S.scheduler, good, ses.answerAt, dayIndex(ses.answerAt));
+  saved(S.db.write(['cardState', 'stats', 'reviewLog'], s => {
+    s.cardState.put(rec);
     s.stats.put(day);
+    s.reviewLog.put(log);
   }));
   ses.flipped = false; renderStudy();
 }
+// Отмена: возвращаем прежнее состояние карточки и день, запись журнала удаляем.
 function undo() {
-  const ses = S.session, u = ses && ses.undo; if (!u) return;
-  const { deck, card } = u.item;
-  const prog = S.prog[deck] || (S.prog[deck] = {});
-  if (u.prev) prog[card] = u.prev; else delete prog[card];
-  if (u.prevDay) S.days[u.today] = u.prevDay; else delete S.days[u.today];
-  ses.queue = u.queue; ses.done = u.done; ses.good = u.good; ses.undo = null; ses.flipped = false;
-  saved(S.db.write(['cardState', 'stats'], s => {
-    if (u.prev) s.cardState.put({ deck, card, sm2: u.prev }); else s.cardState.delete([deck, card]);
+  const ses = S.session; if (!ses) return;
+  const u = undoAnswer(S, ses); if (!u) return;
+  ses.flipped = false;
+  saved(S.db.write(['cardState', 'stats', 'reviewLog'], s => {
+    if (u.prevRec) s.cardState.put(u.prevRec); else s.cardState.delete([u.deck, u.card]);
     if (u.prevDay) s.stats.put(u.prevDay); else s.stats.delete(u.today);
+    s.reviewLog.delete(u.logId);
   }));
   renderStudy();
 }
@@ -442,7 +444,12 @@ function openSettings() {
     '<label>Ответов, чтобы день засчитался<input name="goal" type="number" inputmode="numeric" min="1" max="500" value="' + st.goal + '"></label>' +
     '<p class="help">День засчитывается и тогда, когда ты повторил всё, что было на сегодня, даже если ответов меньше.</p>' +
     '<label class="check"><input type="checkbox" name="streak"' + (st.streak ? ' checked' : '') + '>Показывать серию дней</label>' +
-    '<p class="help">Пропуск дня не обнуляет серию, пока на неделе есть заморозки: их две. «Выучено» — карточки, которые ты помнишь хотя бы неделю.</p>' +
+    '<p class="help">Пропуск дня не обнуляет серию, пока на неделе есть заморозки: их две.</p>' +
+    '<label>Целевая запоминаемость: <b data-ret-val>' + Math.round(st.retention * 100) + ' %</b>' +
+      '<input name="ret" type="range" min="80" max="95" step="1" value="' + Math.round(st.retention * 100) + '"></label>' +
+    '<p class="help">Какую долю карточек ты вспоминаешь, когда они приходят на повторение. Выше — меньше забываешь, но больше повторений каждый день. ' +
+      '90 % — хороший выбор. Новое значение действует со следующих ответов.</p>' +
+    '<p class="help">«Выучено» — карточки, которые ты, по расчёту FSRS, будешь помнить хотя бы 3 недели.</p>' +
     '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Отмена</button><button class="btn dark">Сохранить</button></div>' +
     '<h3 class="sheet-sec">Данные</h3>' +
     '<p class="help">Колоды и прогресс хранятся только на этом устройстве. Время от времени делай резервную копию и сохраняй её в «Файлы» или в облако.</p>' +
@@ -451,8 +458,10 @@ function openSettings() {
       '<button type="button" class="btn dark" data-data="backup">Сделать резервную копию</button>' +
       '<button type="button" class="btn ghost" data-data="restore">Восстановить из копии</button>' +
       '<button type="button" class="btn ghost" data-data="import">Импортировать колоды</button>' +
+      (S.hasFsrsSnapshot ? '<button type="button" class="btn ghost" data-data="snapshot">Скачать копию до перехода на FSRS</button>' : '') +
     '</div>' +
     '<p class="help" style="margin-top:12px">Импорт — файл в формате decks.json. Колоды с тем же id дополняются новыми карточками, прогресс не теряется.</p>' +
+    (S.hasFsrsSnapshot ? '<p class="help">Копия до перехода на FSRS — данные в том виде, какими они были до обновления. Её можно восстановить кнопкой «Восстановить из копии».</p>' : '') +
     '<input type="file" accept=".json,application/json" hidden data-file>' +
     (inIosSafari ? '<button type="button" class="link" style="padding-left:0" data-install-hint>Как установить на экран «Домой»</button>' : '') +
     '<p class="version">SayatSays, версия ' + VERSION + '</p>',
@@ -460,18 +469,23 @@ function openSettings() {
       const F = n => form.elements.namedItem(n);
       const np = Math.max(0, Math.min(200, parseInt(F('np').value, 10) || 0));
       const goal = Math.max(1, Math.min(500, parseInt(F('goal').value, 10) || 1));
-      S.settings = { newPerDay: np, goal, streak: F('streak').checked };
+      const retention = Math.max(80, Math.min(95, parseInt(F('ret').value, 10) || 90)) / 100;
+      S.settings = { newPerDay: np, goal, streak: F('streak').checked, retention };
+      S.scheduler = makeScheduler(retention);
       saved(S.db.write(['settings'], s => s.settings.put({ key: 'prefs', ...S.settings })));
       closeSheet(); render();
     });
 
   prepareBackup();
+  const ret = form.elements.namedItem('ret');
+  ret.addEventListener('input', () => { $('[data-ret-val]', form).textContent = ret.value + ' %'; });
   const fileInput = $('[data-file]', form);
   let fileMode = null;
   form.addEventListener('click', ev => {
     if (ev.target.closest('[data-install-hint]')) { showInstallHint(); return; }
     const b = ev.target.closest('[data-data]'); if (!b) return;
     if (b.dataset.data === 'backup') doBackup();
+    else if (b.dataset.data === 'snapshot') downloadSnapshot();
     else { fileMode = b.dataset.data; fileInput.value = ''; fileInput.click(); }
   });
   fileInput.addEventListener('change', async () => {
@@ -485,10 +499,26 @@ function openSettings() {
 
 // Содержимое базы для копии читаем заранее, когда открываются настройки. Причина: Safari разрешает
 // открыть лист «Поделиться» только сразу после нажатия, и если по нажатию сначала читать базу, он может отказать.
-let preparedData = null;
+let preparedData = null, preparedSnapshot = null;
 function prepareBackup() {
   preparedData = null;
+  if (S.hasFsrsSnapshot) S.db.get('snapshots', 'before-fsrs').then(s => (preparedSnapshot = s)).catch(e => console.error(e));
   return S.db.exportAll().then(d => (preparedData = d)).catch(e => { console.error(e); return null; });
+}
+
+// Отдать файл: на телефоне — лист «Поделиться» (там есть «Сохранить в Файлы»), на компьютере — скачивание.
+// Возвращает false, если лист «Поделиться» закрыли, ничего не сохранив.
+async function deliverFile(file) {
+  const phone = matchMedia('(pointer: coarse)').matches;
+  try {
+    if (phone && navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
+    else downloadFile(file);
+  } catch (e) {
+    if (e && e.name === 'AbortError') return false;
+    console.error(e);
+    downloadFile(file); // лист не открылся — тогда просто скачиваем файл
+  }
+  return true;
 }
 
 function downloadFile(file) {
@@ -504,20 +534,20 @@ async function doBackup() {
   if (!data) { toast('Не удалось прочитать данные для копии.'); return; }
   const now = Date.now();
   const file = new File([JSON.stringify(makeBackup(data, now), null, 2)], backupFileName(now), { type: 'application/json' });
-  // На телефоне — лист «Поделиться» (там есть «Сохранить в Файлы»), на компьютере — обычное скачивание.
-  const phone = matchMedia('(pointer: coarse)').matches;
-  try {
-    if (phone && navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
-    else downloadFile(file);
-  } catch (e) {
-    if (e && e.name === 'AbortError') return; // закрыл лист «Поделиться» — копия не сделана
-    console.error(e);
-    downloadFile(file); // лист не открылся — тогда просто скачиваем файл
-  }
+  if (!(await deliverFile(file))) return; // закрыл лист «Поделиться» — копия не сделана
   S.meta = { ...S.meta, key: 'meta', lastBackupAt: now };
   saved(S.db.write(['settings'], s => s.settings.put(S.meta)));
   const line = $('[data-last-backup]'); if (line) line.innerHTML = lastBackupLine();
   toast('Резервная копия готова.');
+}
+
+// Снимок базы перед переходом на FSRS — в том же формате, что обычная резервная копия.
+async function downloadSnapshot() {
+  const snap = preparedSnapshot || await S.db.get('snapshots', 'before-fsrs');
+  if (!snap) { toast('Копии до перехода на FSRS нет.'); return; }
+  const name = backupFileName(snap.createdAt).replace('backup', 'before-fsrs');
+  const file = new File([JSON.stringify(makeBackup(snap.data, snap.createdAt), null, 2)], name, { type: 'application/json' });
+  if (await deliverFile(file)) toast('Копия до перехода на FSRS готова.');
 }
 
 async function restoreFrom(text) {
@@ -529,6 +559,7 @@ async function restoreFrom(text) {
     'Все текущие данные на этом устройстве — колоды, прогресс, серия и настройки — заменятся данными из копии.')) return;
   try {
     await S.db.replaceAll(dataForRestore(b));
+    await migrateToFsrs(S.db); // копия могла быть сделана ещё до FSRS — тогда карточки переводятся так же
     await loadAll();
   } catch (e) { console.error(e); toast('Не удалось восстановить: ' + ((e && e.message) || e)); return; }
   closeSheet(); S.session = null; S.view = { name: 'home' }; render(); window.scrollTo(0, 0);
@@ -596,7 +627,7 @@ document.addEventListener('keydown', ev => {
   if ($('#sheet').innerHTML) { if (ev.key === 'Escape') closeSheet(); return; }
   if (S.view.name !== 'study' || !S.session) return;
   if (ev.target.closest && ev.target.closest('input,textarea,select')) return;
-  if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); if (S.session.queue.length) flip(); else endStudy(); }
+  if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); if (S.session.current) flip(); else endStudy(); }
   else if ((ev.key === '1' || ev.key === 'ArrowLeft') && S.session.flipped) answer(false);
   else if ((ev.key === '2' || ev.key === 'ArrowRight') && S.session.flipped) answer(true);
   else if (ev.key === 'Escape') endStudy();

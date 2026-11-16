@@ -1,62 +1,104 @@
-// Расписание повторений. Пока это SM-2 в «двухкнопочном» варианте — ровно как в артефакте «Запомни».
-// В задаче 3 внутренности заменятся на FSRS (ts-fsrs), а снаружи останется та же идея:
-// «состояние карточки + ответ → новое состояние».
+// Расписание повторений: FSRS-6 через библиотеку ts-fsrs (vendor/ts-fsrs.mjs).
+// FSRS для каждой карточки помнит две главные величины:
+//   stability  — стабильность: через сколько дней вероятность вспомнить упадёт до 90 %;
+//   difficulty — сложность от 1 до 10: насколько трудно растёт стабильность у этой карточки.
+// По ним и целевой запоминаемости FSRS решает, когда показать карточку снова.
 //
-// Состояние карточки (поля как в data/progress-sm2.json):
-//   s   0 — новая, 1 — изучается, 2 — на повторении
-//   iv  интервал в днях;  e — «лёгкость» (ease), во сколько раз растёт интервал;  d — день следующего повторения
-//   r   сколько раз повторяли;  l — сколько раз забыл;  t — время последнего ответа (мс)
-//   st  сколько шагов изучения пройдено;  rl = 1, если карточку переучивают после «Не знал»
-//   ts  когда показать снова (для изучаемых);  k — номер примера-предложения (для английских карточек)
+// Состояние карточки в базе (поле fsrs записи cardState) — объект Card из ts-fsrs, но даты в нём числа (мс),
+// а не Date: так они без изменений переживают резервную копию в JSON.
+//   state  0 — новая, 1 — изучается, 2 — на повторении, 3 — переучивается после «Не знал»
+//   due    когда показать;  last_review — когда был последний ответ;  reps, lapses — ответов и провалов
 
-// «Выучено» — карточка на повторении с интервалом от недели.
-export const LEARNED_IV = 7;
+import { fsrs, generatorParameters, createEmptyCard, Rating, State } from '../vendor/ts-fsrs.mjs';
+import { dayIndex } from './streak.js';
 
-export const isNew = e => !e || !e.s;
-export const isLearning = e => !!e && e.s === 1;
-export const isLearned = e => !!e && e.s === 2 && (e.iv || 0) >= LEARNED_IV;
-// Нужна ли карточка сегодня: изучаемые — всегда, на повторении — когда наступил день d.
-export const isDue = (e, today) => isLearning(e) || (!!e && e.s === 2 && e.d <= today);
+export { Rating, State };
 
-// Ответ на карточку.
-//   prev   — состояние до ответа (или null, если карточку видят впервые)
-//   good   — true: «Знал», false: «Не знал»
-//   opts   — { now: время в мс, today: номер дня, isEn: английская ли колода, random: для тестов }
-// Возвращает { next, requeue }: новое состояние и через сколько карточек показать её снова
-// в этом же занятии (-1 — сегодня больше не показывать).
-export function review(prev, good, { now, today, isEn = false, random = Math.random }) {
-  const e = prev ? { ...prev } : { s: 0 };
-  let requeue = -1;
-  if (e.s !== 2) {
-    // Новая или изучается: нужно два «Знал» подряд (после провала — один).
-    const steps = e.rl ? 1 : 2;
-    if (good) {
-      e.st = (e.st || 0) + 1;
-      if (e.st >= steps) {
-        e.s = 2;
-        if (!e.rl) e.iv = 1;
-        e.e = e.e || 2.5;
-        e.d = today + e.iv;
-        delete e.st; delete e.rl; delete e.ts;
-      } else { e.s = 1; e.ts = now + 10 * 60e3; requeue = 5; }
-    } else { e.s = 1; e.st = 0; e.ts = now + 60e3; requeue = 3; }
-  } else {
-    e.r = (e.r || 0) + 1;
-    if (good) {
-      // Интервал умножается на «лёгкость» с небольшим случайным разбросом ±5 %,
-      // чтобы карточки, выученные в один день, не приходили всегда вместе.
-      const fuzz = 1 + (random() * 0.1 - 0.05);
-      e.iv = Math.max((e.iv || 1) + 1, Math.round((e.iv || 1) * (e.e || 2.5) * fuzz));
-      e.d = today + e.iv;
-    } else {
-      // Забыл: карточка снова изучается, интервал и «лёгкость» уменьшаются.
-      e.l = (e.l || 0) + 1;
-      e.e = Math.max(1.3, (e.e || 2.5) - 0.2);
-      e.iv = Math.max(1, Math.round((e.iv || 1) * 0.3));
-      e.s = 1; e.st = 0; e.rl = 1; e.ts = now + 60e3; requeue = 3;
-    }
-  }
-  if (isEn) e.k = (e.k || 0) + 1; // в следующий раз — другое предложение
-  e.t = now;
-  return { next: e, requeue };
+export const DEFAULT_RETENTION = 0.9;
+// «Выучено» — на повторении и стабильность от 3 недель.
+export const LEARNED_STABILITY = 21;
+
+// Планировщик с нашими настройками. retention — целевая запоминаемость (0.8–0.95):
+// какую долю карточек ты должен вспомнить в момент повторения. Выше — меньше забываешь, но больше повторений.
+export function makeScheduler(retention = DEFAULT_RETENTION) {
+  return fsrs(generatorParameters({
+    request_retention: retention,
+    maximum_interval: 365,      // не дольше года между повторениями
+    enable_fuzz: true,          // небольшой разброс интервалов, чтобы карточки не приходили пачками
+    enable_short_term: true,
+    learning_steps: ['1m', '10m'],  // новая карточка: через минуту, потом через 10 минут, потом — на дни
+    relearning_steps: ['10m']       // забытая карточка: через 10 минут, потом — снова на дни
+  }));
 }
+
+// Card из ts-fsrs → запись для базы (даты → числа) и обратно.
+export function toStored(card) {
+  return {
+    due: +card.due,
+    stability: card.stability,
+    difficulty: card.difficulty,
+    elapsed_days: card.elapsed_days,
+    scheduled_days: card.scheduled_days,
+    learning_steps: card.learning_steps,
+    reps: card.reps,
+    lapses: card.lapses,
+    state: card.state,
+    last_review: card.last_review ? +card.last_review : null
+  };
+}
+export function fromStored(f) {
+  return { ...f, due: new Date(f.due), last_review: f.last_review != null ? new Date(f.last_review) : undefined };
+}
+
+// Журнал ответа: что вернул ts-fsrs в log — оценка, время ответа и состояние карточки ДО ответа.
+// Пригодится, чтобы потом подогнать параметры FSRS под тебя (ROADMAP, задача 5).
+function logToStored(log) {
+  return {
+    rating: log.rating,
+    review: +log.review,
+    state: log.state,
+    due: +log.due,
+    stability: log.stability,
+    difficulty: log.difficulty,
+    elapsed_days: log.elapsed_days,
+    last_elapsed_days: log.last_elapsed_days,
+    scheduled_days: log.scheduled_days,
+    learning_steps: log.learning_steps
+  };
+}
+
+const cardOf = (f, now) => f ? fromStored(f) : createEmptyCard(new Date(now));
+
+// Ответ на карточку. f — состояние до ответа (null, если карточку видят впервые), good — «Знал»,
+// now — время ответа (мс). Возвращает { next: новое состояние, log: запись для журнала }.
+// При одинаковых f и now результат всегда один и тот же, поэтому подписи под кнопками (preview)
+// совпадают с тем, что получится после ответа.
+export function review(scheduler, f, good, now) {
+  const { card, log } = scheduler.next(cardOf(f, now), new Date(now), good ? Rating.Good : Rating.Again);
+  return { next: toStored(card), log: logToStored(log) };
+}
+
+// Через сколько миллисекунд карточка вернётся после «Не знал» и после «Знал».
+export function preview(scheduler, f, now) {
+  const r = scheduler.repeat(cardOf(f, now), new Date(now));
+  return { bad: +r[Rating.Again].card.due - now, good: +r[Rating.Good].card.due - now };
+}
+
+// «10 мин», «3 ч», «4 дн», «2 мес», «1 г» — подпись под кнопкой.
+export function formatInterval(ms) {
+  const min = Math.max(1, Math.round(ms / 60e3));
+  if (min < 60) return min + ' мин';
+  const h = Math.round(ms / 3600e3);
+  if (h < 24) return h + ' ч';
+  const d = Math.round(ms / 864e5);
+  if (d < 31) return d + ' дн';
+  if (d < 365) return Math.round(d / 30.4) + ' мес';
+  return Math.round(d / 365) + ' г';
+}
+
+export const isNew = f => !f || f.state === State.New;
+export const isLearning = f => !!f && (f.state === State.Learning || f.state === State.Relearning);
+export const isLearned = f => !!f && f.state === State.Review && f.stability >= LEARNED_STABILITY;
+// Нужна ли сегодня: срок наступил не позже сегодняшнего учебного дня (день начинается в 4:00).
+// Например, карточка со сроком на 20:00 показывается уже с утра.
+export const isDue = (f, today) => !isNew(f) && dayIndex(f.due) <= today;

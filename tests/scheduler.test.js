@@ -1,58 +1,77 @@
-// SM-2 из артефакта: те же переходы между состояниями.
+// Расписание FSRS: настройки, ответы, подписи интервалов, «выучено».
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { review, isNew, isLearned, isDue } from '../js/scheduler.js';
+import { makeScheduler, review, preview, formatInterval, isNew, isLearning, isLearned, isDue, toStored, fromStored, State, Rating, LEARNED_STABILITY } from '../js/scheduler.js';
+import { dayIndex, dayStart } from '../js/streak.js';
 
-const now = 1_791_500_000_000, today = 20735;
-const opts = { now, today, random: () => 0.5 }; // random 0.5 — разброс интервала ровно 0
+const now = dayStart(20773) + 8 * 3600e3; // учебный день 20773, 12:00
+const MIN = 60e3, DAY = 864e5;
 
-test('новая карточка: «Знал» два раза подряд → на повторение через день', () => {
-  const a = review(null, true, opts);
-  assert.deepEqual(a.next, { s: 1, st: 1, ts: now + 10 * 60e3, t: now });
-  assert.equal(a.requeue, 5);
-  const b = review(a.next, true, opts);
-  assert.deepEqual(b.next, { s: 2, iv: 1, e: 2.5, d: today + 1, t: now });
-  assert.equal(b.requeue, -1);
+test('настройки: FSRS-6, шаги 1m/10m и 10m, максимум 365 дней, запоминаемость 90 % по умолчанию', () => {
+  const p = makeScheduler().parameters;
+  assert.equal(p.w.length, 21, 'у FSRS-6 21 параметр');
+  assert.equal(p.request_retention, 0.9);
+  assert.equal(p.maximum_interval, 365);
+  assert.equal(p.enable_fuzz, true);
+  assert.deepEqual(p.learning_steps, ['1m', '10m']);
+  assert.deepEqual(p.relearning_steps, ['10m']);
+  assert.equal(makeScheduler(0.85).parameters.request_retention, 0.85);
 });
 
-test('новая карточка: «Не знал» → снова через 3 карточки', () => {
-  const a = review(null, false, opts);
-  assert.deepEqual(a.next, { s: 1, st: 0, ts: now + 60e3, t: now });
-  assert.equal(a.requeue, 3);
+test('«Знал» на новой карточке переводит её в Learning: снова через 10 минут', () => {
+  const s = makeScheduler();
+  const { next, log } = review(s, null, true, now);
+  assert.equal(next.state, State.Learning);
+  assert.ok(isLearning(next));
+  assert.equal(next.due - now, 10 * MIN);
+  assert.equal(log.rating, Rating.Good);
+  assert.equal(log.state, State.New, 'в журнале — состояние ДО ответа');
+  assert.equal(log.review, now);
 });
 
-test('на повторении: «Знал» умножает интервал на лёгкость', () => {
-  const { next } = review({ s: 2, iv: 3, e: 2.5, d: today, t: 1 }, true, opts);
-  assert.equal(next.iv, 8); // round(3 × 2.5) = 8
-  assert.equal(next.d, today + 8);
-  assert.equal(next.r, 1);
+test('«Не знал» на новой карточке — снова через минуту; два «Знал» подряд — на повторение на дни', () => {
+  const s = makeScheduler();
+  assert.equal(review(s, null, false, now).next.due - now, MIN);
+  const a = review(s, null, true, now).next;
+  const b = review(s, a, true, now + 10 * MIN).next;
+  assert.equal(b.state, State.Review);
+  assert.ok(b.due - (now + 10 * MIN) >= DAY);
 });
 
-test('на повторении: «Не знал» → переучивание, потом один «Знал» возвращает на повторение', () => {
-  const a = review({ s: 2, iv: 10, e: 2.5, d: today, t: 1 }, false, opts);
-  assert.deepEqual(a.next, { s: 1, iv: 3, e: 2.3, d: today, r: 1, l: 1, st: 0, rl: 1, ts: now + 60e3, t: now });
-  const b = review(a.next, true, opts);
-  assert.equal(b.next.s, 2);
-  assert.equal(b.next.iv, 3);
-  assert.equal(b.next.d, today + 3);
-  assert.equal(b.next.rl, undefined);
+test('подписи под кнопками совпадают с тем, что получится после ответа', () => {
+  const s = makeScheduler();
+  const card = { due: now, stability: 5, difficulty: 5, elapsed_days: 0, scheduled_days: 5, learning_steps: 0, reps: 3, lapses: 0, state: State.Review, last_review: now - 5 * DAY };
+  const p = preview(s, card, now);
+  assert.equal(p.bad, review(s, card, false, now).next.due - now);
+  assert.equal(p.good, review(s, card, true, now).next.due - now);
+  assert.equal(p.bad, 10 * MIN, 'забытая карточка — снова через 10 минут');
 });
 
-test('английские карточки меняют пример, старое состояние не портится', () => {
-  const prev = { s: 2, iv: 1, e: 2.5, d: today, k: 4, t: 1 };
-  const { next } = review(prev, true, { ...opts, isEn: true });
-  assert.equal(next.k, 5);
-  assert.equal(prev.k, 4);
-  assert.equal(prev.iv, 1);
+test('формат интервала', () => {
+  assert.equal(formatInterval(MIN), '1 мин');
+  assert.equal(formatInterval(10 * MIN), '10 мин');
+  assert.equal(formatInterval(3 * 3600e3), '3 ч');
+  assert.equal(formatInterval(4 * DAY), '4 дн');
+  assert.equal(formatInterval(61 * DAY), '2 мес');
+  assert.equal(formatInterval(365 * DAY), '1 г');
 });
 
-test('новая, выучено, на сегодня', () => {
+test('даты хранятся числами и без потерь превращаются обратно', () => {
+  const { next } = review(makeScheduler(), null, true, now);
+  assert.equal(typeof next.due, 'number');
+  assert.deepEqual(toStored(fromStored(next)), next);
+  assert.deepEqual(JSON.parse(JSON.stringify(next)), next, 'переживает JSON резервной копии');
+});
+
+test('новая, выучено (от 21 дня стабильности), на сегодня', () => {
+  const review2 = (stability, due) => ({ state: State.Review, stability, due });
   assert.equal(isNew(undefined), true);
-  assert.equal(isNew({ s: 0 }), true);
-  assert.equal(isLearned({ s: 2, iv: 7 }), true);
-  assert.equal(isLearned({ s: 2, iv: 6 }), false);
-  assert.equal(isLearned({ s: 1, iv: 30 }), false);
-  assert.equal(isDue({ s: 1 }, today), true);
-  assert.equal(isDue({ s: 2, d: today }, today), true);
-  assert.equal(isDue({ s: 2, d: today + 1 }, today), false);
+  assert.equal(isNew({ state: State.New }), true);
+  assert.equal(isLearned(review2(LEARNED_STABILITY, now)), true);
+  assert.equal(isLearned(review2(20.9, now)), false);
+  assert.equal(isLearned({ state: State.Learning, stability: 40 }), false);
+  const today = dayIndex(now);
+  assert.equal(isDue(review2(5, now + 6 * 3600e3), today), true, 'срок вечером сегодня — уже сегодня');
+  assert.equal(isDue(review2(5, dayStart(today + 1)), today), false, 'завтра в 4:00 — уже завтра');
+  assert.equal(isDue(undefined, today), false, 'новые считаются отдельно, по лимиту');
 });
