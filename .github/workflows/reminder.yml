@@ -1,0 +1,33 @@
+# Напоминание о повторении: GitHub Actions по расписанию отправляет push на телефон (tools/send-push.mjs).
+# Что написать в уведомлении, телефон решает сам — по своей базе (sw.js).
+#
+# Время в cron — по UTC. В Алматы UTC+5, поэтому из времени Алматы вычитаем 5 часов.
+# Формат: «минута час * * *». GitHub может запустить на несколько минут позже, иногда и на час.
+# Как поменять время и проверить вручную — см. README, раздел «Напоминания».
+name: Напоминание
+
+on:
+  schedule:
+    - cron: '9 2 * * *'     # 7:09 по Алматы
+    - cron: '45 13 * * *'   # 18:45 по Алматы
+  workflow_dispatch:        # кнопка «Run workflow» — проверить вручную
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Отправить напоминание
+        run: node tools/send-push.mjs
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_SUBSCRIPTION: ${{ secrets.PUSH_SUBSCRIPTION }}
