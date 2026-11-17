@@ -5,7 +5,7 @@
 // Браузер заметит, что sw.js изменился, скачает файлы в новый кэш, и приложение покажет
 // плашку «Доступно обновление». Пока не нажмёшь «Обновить», работает старая версия.
 
-const VERSION = 3;
+const VERSION = 4;
 const CACHE = 'sayatsays-v' + VERSION;
 
 // Всё, что нужно приложению. Тест tests/sw.test.js проверяет, что список полный и все файлы существуют.
@@ -16,14 +16,17 @@ const FILES = [
   './css/app.css',
   './js/app.js',
   './js/backup.js',
+  './js/claude.js',
   './js/config.js',
   './js/db.js',
   './js/decks.js',
   './js/migrate.js',
   './js/push.js',
   './js/scheduler.js',
+  './js/stats.js',
   './js/streak.js',
   './js/study.js',
+  './js/themes.js',
   './js/version.js',
   './vendor/ts-fsrs.mjs',
   './fonts/golos-text-cyrillic-ext-wght-normal.woff2',

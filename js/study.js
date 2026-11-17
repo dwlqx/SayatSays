@@ -5,9 +5,9 @@
 //   later    изучаемые карточки, которые вернутся в это же занятие, когда подойдёт срок: { deck, card, due },
 //            отсортированы по сроку («Не знал» — через минуту, «Знал» на шаге изучения — через 10 минут)
 //   current  карточка на экране: { item, from: 'queue' | 'later' }
-//   done, good — сколько ответов и сколько из них «Знал»;  undo — как вернуть последний ответ
+//   done, good — сколько ответов и сколько из них «вспомнил» (всё, кроме «Не знал»);  undo — как вернуть последний ответ
 
-import { review, isNew, isLearning } from './scheduler.js';
+import { review, remembered, isNew, isLearning } from './scheduler.js';
 import { typeOf, buildQueue } from './decks.js';
 
 // Если показывать больше нечего, изучаемую карточку можно показать раньше срока, но не больше чем на 20 минут.
@@ -40,9 +40,9 @@ export function dropItem(ses, pick) {
 let lastLogId = 0;
 function nextLogId(now) { lastLogId = Math.max(now, lastLogId + 1); return lastLogId; }
 
-// Ответ на текущую карточку (ses.current). Меняет S.prog, S.days и ses.
+// Ответ на текущую карточку (ses.current). rating — оценка (Rating.Again … Rating.Easy). Меняет S.prog, S.days и ses.
 // Возвращает, что записать в базу одной транзакцией: { rec: cardState, day: stats, log: reviewLog }.
-export function answerCard(S, ses, scheduler, good, now, today) {
+export function answerCard(S, ses, scheduler, rating, now, today) {
   const { item, from } = ses.current;
   const prog = S.prog[item.deck] || (S.prog[item.deck] = {});
   const prevRec = prog[item.card] || null, prevDay = S.days[today] || null;
@@ -50,7 +50,7 @@ export function answerCard(S, ses, scheduler, good, now, today) {
   // Запоминаем всё, что меняем, — для кнопки «Отменить».
   const undo = { item, prevRec, prevDay, today, queue: ses.queue.slice(), later: ses.later.slice(), done: ses.done, good: ses.good };
 
-  const { next, log } = review(scheduler, f, good, now);
+  const { next, log } = review(scheduler, f, rating, now);
   const rec = { ...(prevRec || { deck: item.deck, card: item.card }), fsrs: next };
   if (typeOf(S.decks[item.deck]) === 'en') rec.k = (rec.k || 0) + 1; // в следующий раз — другое предложение
   prog[item.card] = rec;
@@ -60,7 +60,7 @@ export function answerCard(S, ses, scheduler, good, now, today) {
     ses.later.push({ deck: item.deck, card: item.card, due: next.due });
     ses.later.sort((a, b) => a.due - b.due);
   }
-  ses.done++; if (good) ses.good++;
+  ses.done++; if (remembered(rating)) ses.good++;
 
   // Статистика дня: ещё один ответ; если карточка была новой — ещё одна новая из этой колоды.
   const day = { day: today, n: 0, done: false, ...prevDay };
