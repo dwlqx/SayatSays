@@ -69,19 +69,28 @@ function logToStored(log) {
 
 const cardOf = (f, now) => f ? fromStored(f) : createEmptyCard(new Date(now));
 
-// Ответ на карточку. f — состояние до ответа (null, если карточку видят впервые), good — «Знал»,
-// now — время ответа (мс). Возвращает { next: новое состояние, log: запись для журнала }.
+// Оценки ответа. Две кнопки — «Не знал» (Again) и «Знал» (Good); в режиме четырёх кнопок ещё
+// «Трудно» (Hard: вспомнил с трудом, вернётся чуть раньше) и «Легко» (Easy: знал сразу, вернётся намного позже).
+export const ANSWERS = [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy];
+// Вспомнил ли: всё, кроме «Не знал». Так считаются «знал» в итогах занятия и в статистике.
+export const remembered = rating => rating !== Rating.Again;
+
+// Ответ на карточку. f — состояние до ответа (null, если карточку видят впервые), rating — оценка (Rating.Again …
+// Rating.Easy), now — время ответа (мс). Возвращает { next: новое состояние, log: запись для журнала }.
 // При одинаковых f и now результат всегда один и тот же, поэтому подписи под кнопками (preview)
 // совпадают с тем, что получится после ответа.
-export function review(scheduler, f, good, now) {
-  const { card, log } = scheduler.next(cardOf(f, now), new Date(now), good ? Rating.Good : Rating.Again);
+export function review(scheduler, f, rating, now) {
+  if (!ANSWERS.includes(rating)) throw new Error('Неизвестная оценка ответа: ' + rating);
+  const { card, log } = scheduler.next(cardOf(f, now), new Date(now), rating);
   return { next: toStored(card), log: logToStored(log) };
 }
 
-// Через сколько миллисекунд карточка вернётся после «Не знал» и после «Знал».
+// Через сколько миллисекунд карточка вернётся после каждой оценки: { [Rating.Again]: мс, …, [Rating.Easy]: мс }.
 export function preview(scheduler, f, now) {
   const r = scheduler.repeat(cardOf(f, now), new Date(now));
-  return { bad: +r[Rating.Again].card.due - now, good: +r[Rating.Good].card.due - now };
+  const out = {};
+  for (const rating of ANSWERS) out[rating] = +r[rating].card.due - now;
+  return out;
 }
 
 // «10 мин», «3 ч», «4 дн», «2 мес», «1 г» — подпись под кнопкой.

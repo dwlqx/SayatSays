@@ -1,4 +1,4 @@
-// Колоды: дерево, счётчики, очередь занятия и импорт новых колод. Модуль без DOM — его проверяют тесты.
+// Колоды: дерево, счётчики, очередь занятия, поля карточек и импорт новых колод. Модуль без DOM — его проверяют тесты.
 //
 // Почти все функции получают S — состояние приложения в памяти:
 //   S.decks    { [id колоды]: { id, name, type, parent, order, cards: [...] } }
@@ -100,6 +100,79 @@ export function buildQueue(S, ids, today, random = Math.random) {
   return learn.map(x => ({ deck: x.deck, card: x.card })).concat(mixed);
 }
 
+/* ---------- поля карточек ---------- */
+
+// Какие поля у карточек каждого типа: need — обязательные, opt — необязательные.
+// У английских карточек ещё список предложений sentences.
+export const CARD_FIELDS = {
+  kz: { need: ['ru', 'kz'], opt: ['note'] },
+  kzru: { need: ['kz', 'ru'], opt: ['note'] },
+  en: { need: ['word'], opt: ['ipa', 'ru', 'def'] },
+  qa: { need: ['q', 'a'], opt: [] }
+};
+const FIELD_NAMES = {
+  ru: 'по-русски (ru)', kz: 'қазақша (kz)', note: 'заметка (note)', word: 'слово (word)', ipa: 'транскрипция (ipa)',
+  def: 'пояснение (def)', q: 'вопрос (q)', a: 'ответ (a)'
+};
+const isText = v => typeof v === 'string' && v.trim() !== '';
+
+// Есть ли в предложении пропуск: слово в {фигурных скобках} или само слово (так его ищет карточка).
+export const hasGap = (sentence, word) => /\{[^}]+\}/.test(sentence) || sentence.toLowerCase().includes(String(word).toLowerCase());
+
+// Что не так с карточкой — текст для человека (и для Claude, если карточку сделал он) или null, если всё хорошо.
+export function cardProblem(type, card) {
+  const f = CARD_FIELDS[type];
+  for (const k of f.need) if (!isText(card[k])) return 'не заполнено поле «' + FIELD_NAMES[k] + '»';
+  for (const k of f.opt) if (card[k] != null && typeof card[k] !== 'string') return 'поле «' + FIELD_NAMES[k] + '» должно быть текстом';
+  if (type === 'en') {
+    const ss = card.sentences;
+    if (ss != null && (!Array.isArray(ss) || ss.some(x => typeof x !== 'string'))) return 'sentences должно быть списком предложений';
+    const list = (ss || []).filter(isText);
+    if (!list.length && !isText(card.def) && !isText(card.ru)) return 'нужно хотя бы одно предложение, пояснение (def) или перевод (ru)';
+    const bad = list.find(x => !hasGap(x, card.word));
+    if (bad) return 'в предложении «' + bad + '» нет слова «' + card.word + '» — возьми его в {фигурные скобки}';
+  }
+  return null;
+}
+
+// Короткая подпись карточки для сообщений: первое заполненное обязательное поле.
+export function cardLabel(type, card) {
+  const k = CARD_FIELDS[type].need.find(n => isText(card[n]));
+  const t = k ? card[k].trim() : '';
+  return t.length > 40 ? t.slice(0, 39) + '…' : t;
+}
+
+// Карточка из полей формы. value(имя поля) — текст из поля. Пробелы по краям убираются, пустые необязательные
+// поля не сохраняются, предложения — по одному на строку. id не ставится: его добавляет тот, кто сохраняет.
+export function cardFromForm(type, value) {
+  const f = CARD_FIELDS[type], card = {};
+  for (const k of [...f.need, ...f.opt]) { const v = String(value(k) || '').trim(); if (v) card[k] = v; }
+  if (type === 'en') card.sentences = String(value('sentences') || '').split('\n').map(x => x.trim()).filter(Boolean);
+  return card;
+}
+
+// Колода с исправленной карточкой. id карточки не меняется, поэтому прогресс по ней сохраняется.
+// Поля, которых нет в форме (например, добавленные Claude сверх формата), тоже не теряются.
+export function updateCard(deck, cardId, card) {
+  const f = CARD_FIELDS[typeOf(deck)];
+  return {
+    ...deck,
+    cards: (deck.cards || []).map(c => {
+      if (c.id !== cardId) return c;
+      const next = { ...c };
+      for (const k of [...f.need, ...f.opt, 'sentences']) delete next[k];
+      return { ...next, ...card, id: cardId };
+    })
+  };
+}
+
+// Можно ли положить колоду id внутрь колоды parent (null — на верхний уровень).
+// Нельзя внутрь самой себя и внутрь своих же подколод — получился бы круг.
+export function canMove(decks, id, parent) {
+  if (!parent) return true;
+  return !!decks[parent] && !descendants(decks, id).includes(parent);
+}
+
 /* ---------- импорт колод из файла ---------- */
 
 // Разбирает текст файла с колодами. Понимает три вида:
@@ -107,7 +180,7 @@ export function buildQueue(S, ids, today, random = Math.random) {
 // Если что-то не так — бросает ошибку с понятным текстом.
 export function parseDeckFile(text) {
   let json;
-  try { json = JSON.parse(text); } catch (e) { throw new Error('Файл не читается: это не JSON.'); }
+  try { json = JSON.parse(text); } catch (e) { throw new Error('Не получается прочитать: это не JSON.'); }
   if (json && json.app === 'SayatSays') throw new Error('Это резервная копия, а не колоды. Её открывают кнопкой «Восстановить из копии».');
   const list = Array.isArray(json) ? json
     : (json && Array.isArray(json.decks)) ? json.decks
@@ -124,6 +197,11 @@ export function parseDeckFile(text) {
     if (d.cards != null && !Array.isArray(d.cards)) throw new Error(where + ': cards должно быть списком.');
     (d.cards || []).forEach((c, j) => {
       if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error(where + ': карточка №' + (j + 1) + ' — не объект.');
+      const problem = cardProblem(d.type, c);
+      if (problem) {
+        const label = cardLabel(d.type, c);
+        throw new Error(where + ', карточка №' + (j + 1) + (label ? ' («' + label + '»)' : '') + ': ' + problem + '.');
+      }
     });
   });
   return list;
@@ -138,23 +216,42 @@ export function contentId(card) {
   return 'h' + h.toString(36);
 }
 
+// Содержимое карточки без id — по нему узнаём одинаковые карточки с разными id.
+const sameContent = c => { const { id, ...rest } = c; return contentId(rest); };
+
 // Добавляет колоды из файла к текущим.
-//   — Колоды с новым id добавляются целиком.
-//   — В колоду с уже существующим id добавляются только карточки с новыми id.
-//     Название, тип, место и старые карточки не меняются, прогресс (он хранится отдельно) не трогается.
-// Возвращает { decks: все колоды после слияния, changed: колоды, которые надо сохранить, addedDecks, addedCards }.
+//   — Колоды с новым id добавляются целиком. Если указанного родителя (parent) нет ни в приложении,
+//     ни в файле, колода ложится на верхний уровень.
+//   — В колоду с уже существующим id добавляются только новые карточки: с новым id и с новым содержимым
+//     (карточка, которая слово в слово уже есть, пропускается). Название, тип, место и старые карточки
+//     не меняются, прогресс (он хранится отдельно) не трогается.
+//   — Если у существующей колоды другой тип, бросает ошибку: поля карточек у типов разные.
+// Возвращает { decks: все колоды после слияния, changed: колоды, которые надо сохранить, addedDecks, addedCards,
+//   details: по каждой колоде из файла { id, name, isNew, parent, added, skipped } — чтобы показать до добавления }.
 export function mergeDecks(current, incoming) {
   const next = { ...current };
-  const changed = new Map();
+  const changed = new Map(), details = [];
+  const inFile = new Set(incoming.map(d => d.id));
   let addedDecks = 0, addedCards = 0;
   let maxOrder = Object.values(next).reduce((m, d) => Math.max(m, d.order || 0), 0);
   for (const raw of incoming) {
     const cards = (raw.cards || []).map(c => (c.id != null && c.id !== '') ? { ...c, id: String(c.id) } : { ...c, id: contentId(c) });
     const cur = next[raw.id];
-    const base = cur || { ...raw, parent: raw.parent || null, order: raw.order != null ? raw.order : ++maxOrder, cards: [] };
+    if (cur && typeOf(cur) !== raw.type) {
+      throw new Error('Колода «' + cur.name + '» (id ' + cur.id + ') уже есть, и у неё тип ' + typeOf(cur) + ', а в тексте — ' + raw.type +
+        '. Карточки другого типа в неё не добавить: поменяй тип или придумай новой колоде другой id.');
+    }
+    const parentOk = raw.parent && raw.parent !== raw.id && (current[raw.parent] || inFile.has(raw.parent));
+    const base = cur || { ...raw, parent: parentOk ? raw.parent : null, order: raw.order != null ? raw.order : ++maxOrder, cards: [] };
     const have = new Set((base.cards || []).map(c => c.id));
+    const haveContent = new Set((base.cards || []).map(sameContent));
     const fresh = [];
-    for (const c of cards) if (!have.has(c.id)) { have.add(c.id); fresh.push(c); }
+    let skipped = 0;
+    for (const c of cards) {
+      const key = sameContent(c);
+      if (have.has(c.id) || haveContent.has(key)) { skipped++; continue; }
+      have.add(c.id); haveContent.add(key); fresh.push(c);
+    }
     if (!cur) addedDecks++;
     if (!cur || fresh.length) {
       const d = { ...base, cards: (base.cards || []).concat(fresh) };
@@ -162,6 +259,7 @@ export function mergeDecks(current, incoming) {
       changed.set(d.id, d);
       addedCards += fresh.length;
     }
+    details.push({ id: raw.id, name: next[raw.id].name, isNew: !cur, parent: next[raw.id].parent || null, added: fresh.length, skipped });
   }
-  return { decks: next, changed: [...changed.values()], addedDecks, addedCards };
+  return { decks: next, changed: [...changed.values()], addedDecks, addedCards, details };
 }

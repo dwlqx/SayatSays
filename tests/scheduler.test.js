@@ -20,7 +20,7 @@ test('настройки: FSRS-6, шаги 1m/10m и 10m, максимум 365 �
 
 test('«Знал» на новой карточке переводит её в Learning: снова через 10 минут', () => {
   const s = makeScheduler();
-  const { next, log } = review(s, null, true, now);
+  const { next, log } = review(s, null, Rating.Good, now);
   assert.equal(next.state, State.Learning);
   assert.ok(isLearning(next));
   assert.equal(next.due - now, 10 * MIN);
@@ -31,9 +31,9 @@ test('«Знал» на новой карточке переводит её в L
 
 test('«Не знал» на новой карточке — снова через минуту; два «Знал» подряд — на повторение на дни', () => {
   const s = makeScheduler();
-  assert.equal(review(s, null, false, now).next.due - now, MIN);
-  const a = review(s, null, true, now).next;
-  const b = review(s, a, true, now + 10 * MIN).next;
+  assert.equal(review(s, null, Rating.Again, now).next.due - now, MIN);
+  const a = review(s, null, Rating.Good, now).next;
+  const b = review(s, a, Rating.Good, now + 10 * MIN).next;
   assert.equal(b.state, State.Review);
   assert.ok(b.due - (now + 10 * MIN) >= DAY);
 });
@@ -42,9 +42,12 @@ test('подписи под кнопками совпадают с тем, чт�
   const s = makeScheduler();
   const card = { due: now, stability: 5, difficulty: 5, elapsed_days: 0, scheduled_days: 5, learning_steps: 0, reps: 3, lapses: 0, state: State.Review, last_review: now - 5 * DAY };
   const p = preview(s, card, now);
-  assert.equal(p.bad, review(s, card, false, now).next.due - now);
-  assert.equal(p.good, review(s, card, true, now).next.due - now);
-  assert.equal(p.bad, 10 * MIN, 'забытая карточка — снова через 10 минут');
+  for (const rating of [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy]) {
+    assert.equal(p[rating], review(s, card, rating, now).next.due - now, 'оценка ' + rating);
+  }
+  assert.ok(p[Rating.Again] < p[Rating.Hard] && p[Rating.Hard] < p[Rating.Good] && p[Rating.Good] < p[Rating.Easy],
+    'чем легче ответ, тем дальше следующее повторение');
+  assert.equal(p[Rating.Again], 10 * MIN, 'забытая карточка — снова через 10 минут');
 });
 
 test('формат интервала', () => {
@@ -57,7 +60,7 @@ test('формат интервала', () => {
 });
 
 test('даты хранятся числами и без потерь превращаются обратно', () => {
-  const { next } = review(makeScheduler(), null, true, now);
+  const { next } = review(makeScheduler(), null, Rating.Good, now);
   assert.equal(typeof next.due, 'number');
   assert.deepEqual(toStored(fromStored(next)), next);
   assert.deepEqual(JSON.parse(JSON.stringify(next)), next, 'переживает JSON резервной копии');

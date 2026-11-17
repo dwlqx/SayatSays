@@ -16,9 +16,11 @@ async function verbsSession() {
   const ses = startSession(S, ['kz-lex-verbs'], TODAY, () => 0.5);
   return { S, ses, scheduler: makeScheduler() };
 }
+// good: true — «Знал», false — «Не знал», или сама оценка Rating.*
 function answer(S, ses, scheduler, good, now) {
   ses.current = nextItem(ses, now);
-  return answerCard(S, ses, scheduler, good, now, TODAY);
+  const rating = good === true ? Rating.Good : good === false ? Rating.Again : good;
+  return answerCard(S, ses, scheduler, rating, now, TODAY);
 }
 
 test('«Знал» на новой карточке: Learning, запись в журнале, счётчики дня', async () => {
@@ -67,7 +69,7 @@ test('отмена ответа на карточку с прогрессом в
   const pick = nextItem(ses, NOW);
   const before = structuredClone(S.prog[pick.item.deck][pick.item.card]);
   ses.current = pick;
-  answerCard(S, ses, makeScheduler(), true, NOW, TODAY);
+  answerCard(S, ses, makeScheduler(), Rating.Good, NOW, TODAY);
   assert.notDeepEqual(S.prog[pick.item.deck][pick.item.card].fsrs, before.fsrs);
   const u = undoAnswer(S, ses);
   assert.deepEqual(u.prevRec, before);
@@ -97,4 +99,18 @@ test('день засчитывается, когда набрана цель и
   for (let i = 0; i < 3; i++) day = answer(S, ses, scheduler, true, NOW + i * 1000).day;
   assert.equal(day.n, 3);
   assert.equal(day.done, true);
+});
+
+test('четыре кнопки: в журнал пишется настоящая оценка, «Трудно» и «Легко» считаются как «вспомнил»', async () => {
+  const { S, ses, scheduler } = await verbsSession();
+  const ratings = [Rating.Hard, Rating.Easy, Rating.Again, Rating.Good];
+  const logs = ratings.map((r, i) => answer(S, ses, scheduler, r, NOW + i * 1000).log);
+  assert.deepEqual(logs.map(l => l.rating), ratings);
+  assert.equal(ses.done, 4);
+  assert.equal(ses.good, 3);
+  // «Легко» на новой карточке сразу отправляет её на повторение на дни, остальные остаются в изучении.
+  const easy = S.prog['kz-lex-verbs'][logs[1].card].fsrs;
+  assert.equal(easy.state, State.Review);
+  assert.ok(easy.due - NOW >= 864e5);
+  assert.throws(() => answer(S, ses, scheduler, 7, NOW + 9000), /Неизвестная оценка/);
 });

@@ -13,6 +13,11 @@
 <link rel="icon" type="image/png" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="stylesheet" href="./css/app.css">
+<script>
+  // Тема — до первой отрисовки, иначе при запуске мелькнёт светлая. Главная запись темы — в настройках (в базе),
+  // а здесь её копия из localStorage: база открывается позже. Список тем — js/themes.js.
+  try { var t = localStorage.getItem('sayatsays-theme'); if (t && t !== 'auto') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
 <script type="module" src="./js/app.js"></script>
 </head>
 <body>

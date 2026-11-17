@@ -7,9 +7,13 @@
 import { openDB } from './db.js';
 import { seedIfNeeded, migrateToFsrs } from './migrate.js';
 import { makeBackup, backupFileName, parseBackup, dataForRestore } from './backup.js';
-import { dayIndex, weekOf, streakInfo } from './streak.js';
-import { makeScheduler, preview, formatInterval, DEFAULT_RETENTION } from './scheduler.js';
-import { typeOf, uid36, childrenOf, descendants, deckCounts, todayTotal, fsrsOf, parseDeckFile, mergeDecks } from './decks.js';
+import { dayIndex, dayStart, weekOf, streakInfo } from './streak.js';
+import { makeScheduler, preview, formatInterval, DEFAULT_RETENTION, Rating, ANSWERS } from './scheduler.js';
+import { typeOf, uid36, childrenOf, descendants, deckCounts, todayTotal, fsrsOf, parseDeckFile, mergeDecks,
+  cardProblem, cardFromForm, updateCard, canMove } from './decks.js';
+import { parsePasted, claudeInstructions } from './claude.js';
+import { answersByDay, goodShare, forecast, totals } from './stats.js';
+import { THEMES, DEFAULT_THEME, isTheme, THEME_KEY } from './themes.js';
 import { startSession, nextItem, dropItem, leftInSession, answerCard, undoAnswer } from './study.js';
 import { pushStatus, currentSubscription, subscriptionText, enablePush, testReminder, setBadge } from './push.js';
 import { VERSION } from './version.js';
@@ -26,6 +30,8 @@ const ICON = {
   undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20v-7M12 20V5M19 20v-10"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>'
 };
 
@@ -37,7 +43,8 @@ const TYPES = {
   qa: { label: 'Предмет: вопрос и ответ', color: 'var(--qa)' }
 };
 const colorOf = d => TYPES[typeOf(d)].color;
-const DEFAULT_SETTINGS = { newPerDay: 15, goal: 10, streak: true, retention: DEFAULT_RETENTION };
+// theme — тема оформления (список в themes.js); buttons — сколько кнопок ответа: 2 или 4.
+const DEFAULT_SETTINGS = { newPerDay: 15, goal: 10, streak: true, retention: DEFAULT_RETENTION, theme: DEFAULT_THEME, buttons: 2 };
 
 // Состояние в памяти. Что лежит в decks, prog, days и settings — см. начало decks.js.
 // scheduler — планировщик FSRS с текущей целевой запоминаемостью.
@@ -61,7 +68,10 @@ async function loadAll() {
   const prefs = settings.find(s => s.key === 'prefs') || {};
   S.settings = {};
   for (const k in DEFAULT_SETTINGS) S.settings[k] = prefs[k] ?? DEFAULT_SETTINGS[k];
+  if (!isTheme(S.settings.theme)) S.settings.theme = DEFAULT_THEME;
+  if (S.settings.buttons !== 4) S.settings.buttons = 2;
   S.scheduler = makeScheduler(S.settings.retention);
+  applyTheme(S.settings.theme);
   S.meta = settings.find(s => s.key === 'meta') || { key: 'meta' };
   S.hasFsrsSnapshot = !!(await S.db.get('snapshots', 'before-fsrs'));
 }
@@ -84,6 +94,9 @@ async function loadLegacyFiles() {
 }
 
 async function init() {
+  let stored = null;
+  try { stored = localStorage.getItem(THEME_KEY); } catch (e) { /* нет localStorage — не страшно */ }
+  applyTheme(stored); // настоящая настройка придёт из базы в loadAll
   render();
   let seeded = false, migrated = 0;
   try {
@@ -117,6 +130,7 @@ function render() {
   const v = S.view;
   app.className = v.name === 'study' ? 'is-study' : '';
   if (v.name === 'deck' && !S.decks[v.id]) S.view = { name: 'home' };
+  if (S.view.name === 'stats') { app.innerHTML = statsHTML(); return; }
   if (S.view.name === 'home') { app.innerHTML = homeHTML(); if (maybeAutoDone()) app.innerHTML = homeHTML(); updateBadge(); }
   else if (S.view.name === 'deck') app.innerHTML = deckHTML(S.view.id);
   else if (S.view.name === 'study') renderStudy();
@@ -157,15 +171,17 @@ function rowsHTML(pid, depth) {
 function homeHTML() {
   const ids = Object.keys(S.decks), today = dayIndex();
   const all = todayTotal(S, today);
-  let h = '<header class="top"><h1 class="brand">SayatSays</h1><button class="icon-btn" data-act="settings" aria-label="Настройки">' + ICON.gear + '</button></header>';
+  let h = '<header class="top"><h1 class="brand">SayatSays</h1><div class="top-btns">' +
+    '<button class="icon-btn" data-act="stats" aria-label="Статистика">' + ICON.chart + '</button>' +
+    '<button class="icon-btn" data-act="settings" aria-label="Настройки">' + ICON.gear + '</button></div></header>';
   h += streakHTML();
   if (!ids.length) {
-    h += '<div class="empty"><p>Колод пока нет.</p><p>Попроси Claude в чате колоду в формате decks.json и добавь её: Настройки → Данные → «Импортировать колоды».</p>' +
-      '<button class="link" style="padding-left:0" data-act="add-deck">Создать колоду самому</button></div>';
+    h += '<div class="empty"><p>Колод пока нет.</p><p>Попроси Claude сделать карточки и перенеси их сюда — или создай колоду сам.</p>' +
+      '<button class="link" style="padding-left:0" data-act="add">Добавить колоды</button></div>';
     return h;
   }
   h += '<button class="primary" data-act="study-all"' + (all ? '' : ' disabled') + '><span>' + (all ? 'Повторить всё' : 'На сегодня всё повторено') + '</span>' + (all ? '<span class="pill">' + all + '</span>' : '') + '</button>';
-  h += '<div class="sec"><h2>Колоды</h2><button class="link" data-act="add-deck">Новая колода</button></div>';
+  h += '<div class="sec"><h2>Колоды</h2><button class="link" data-act="add">Добавить</button></div>';
   h += '<ul class="decks">' + rowsHTML(null, 0) + '</ul>';
   return h;
 }
@@ -183,7 +199,9 @@ function deckHTML(id) {
   const tot = c.total || 1;
   let h = '<div style="--c:' + colorOf(d) + '">';
   h += '<button class="back-btn" data-act="' + (parent ? 'open-deck' : 'home') + '"' + (parent ? ' data-id="' + esc(parent.id) + '"' : '') + '>' + ICON.back + (parent ? esc(parent.name) : 'Колоды') + '</button>';
-  h += '<h1 class="deck-h">' + esc(d.name) + '</h1><p class="deck-type">' + TYPES[t].label + '</p>';
+  h += '<div class="deck-title"><h1 class="deck-h">' + esc(d.name) + '</h1>' +
+    '<button class="icon-btn" data-act="edit-deck" data-id="' + esc(id) + '" aria-label="Изменить название и место колоды">' + ICON.pencil + '</button></div>' +
+    '<p class="deck-type">' + TYPES[t].label + '</p>';
   h += '<div class="stack" aria-hidden="true"><span style="flex:' + c.nw / tot + '"></span><span class="s-learn" style="flex:' + c.learning / tot + '"></span><span class="s-done" style="flex:' + c.learned / tot + '"></span></div>';
   h += '<div class="legend"><div><b>' + c.nw + '</b><span><i class="k" style="background:var(--line)"></i>новые</span></div>' +
        '<div><b>' + c.learning + '</b><span><i class="k" style="background:color-mix(in srgb, var(--c) 40%, var(--line))"></i>изучаются</span></div>' +
@@ -194,11 +212,14 @@ function deckHTML(id) {
   h += kids.length ? '<ul class="decks">' + rowsHTML(id, 1) + '</ul>' : '<p class="note">Нет подколод.</p>';
   const cards = d.cards || [];
   if (cards.length || !kids.length) {
-    h += '<div class="sec"><h2>Карточки<span class="cnt">' + cards.length + '</span></h2><button class="link" data-act="add-card" data-id="' + esc(id) + '">Добавить</button></div>';
-    if (!cards.length) h += '<p class="note">Карточек пока нет. Добавь сам или попроси Claude в чате карточки для «' + esc(d.name) + '» и импортируй их в настройках.</p>';
-    else h += '<ul class="cards">' + cards.map(card => {
+    h += '<div class="sec"><h2>Карточки<span class="cnt">' + cards.length + '</span></h2><span>' +
+      '<button class="link" data-act="add" data-id="' + esc(id) + '">От Claude</button>' +
+      '<button class="link" data-act="add-card" data-id="' + esc(id) + '">Добавить</button></span></div>';
+    if (!cards.length) h += '<p class="note">Карточек пока нет. Добавь сам или попроси Claude: «От Claude» — там инструкция для чата.</p>';
+    else h += '<p class="note">Нажми на карточку, чтобы исправить её.</p><ul class="cards">' + cards.map(card => {
       const s = cardSummary(t, card);
-      return '<li><div><div class="f">' + esc(s[0]) + '</div><div class="b">' + esc(s[1]) + '</div></div>' +
+      return '<li><button class="card-row" data-act="edit-card" data-deck="' + esc(id) + '" data-card="' + esc(card.id) + '">' +
+        '<span class="f">' + esc(s[0]) + '</span><span class="b">' + esc(s[1]) + '</span></button>' +
         '<button class="del" data-act="del-card" data-deck="' + esc(id) + '" data-card="' + esc(card.id) + '" aria-label="Удалить карточку">' + ICON.trash + '</button></li>';
     }).join('') + '</ul>';
   }
@@ -241,13 +262,22 @@ function facesHTML(deck, card, e) {
   return '<div class="face front">' + tag + '<div class="body">' + f + '</div></div><div class="face back" aria-hidden="true">' + tag + '<div class="body">' + b + '</div></div>';
 }
 
-// Кнопки ответа. Под «Не знал» и «Знал» — когда карточка вернётся, если ответить так (считает FSRS).
+// Кнопки ответа: две («Не знал», «Знал») или четыре — это выбирается в настройках.
+// Под каждой — когда карточка вернётся, если ответить так (считает FSRS).
+const ANSWER_BTN = {
+  [Rating.Again]: { label: 'Не знал', cls: 'bad' },
+  [Rating.Hard]: { label: 'Трудно', cls: 'hard' },
+  [Rating.Good]: { label: 'Знал', cls: 'good' },
+  [Rating.Easy]: { label: 'Легко', cls: 'easy' }
+};
+const fourButtons = () => S.settings.buttons === 4;
+const answerRatings = () => fourButtons() ? ANSWERS : [Rating.Again, Rating.Good];
 function actionsHTML() {
   const ses = S.session;
   if (!ses.flipped) return '<button class="btn-big show" data-act="flip">Показать ответ</button>';
   const sub = ms => ses.preview ? '<small>' + formatInterval(ms) + '</small>' : '';
-  return '<button class="btn-big bad" data-act="bad">Не знал' + sub(ses.preview && ses.preview.bad) + '</button>' +
-    '<button class="btn-big good" data-act="good">Знал' + sub(ses.preview && ses.preview.good) + '</button>';
+  return answerRatings().map(r => '<button class="btn-big ' + ANSWER_BTN[r].cls + '" data-act="answer" data-rating="' + r + '">' +
+    ANSWER_BTN[r].label + sub(ses.preview && ses.preview[r]) + '</button>').join('');
 }
 
 function renderStudy() {
@@ -266,10 +296,11 @@ function renderStudy() {
     '<div class="sbar"><button class="icon-btn" data-act="close" aria-label="Закончить">' + ICON.close + '</button>' +
     '<div class="pbar" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><div style="width:' + pct + '%"></div></div>' +
     '<span class="left" title="осталось">' + left + '</span>' +
+    '<button class="icon-btn" data-act="edit-current" aria-label="Исправить карточку">' + ICON.pencil + '</button>' +
     '<button class="icon-btn" data-act="undo" aria-label="Отменить последний ответ"' + (ses.undo ? '' : ' disabled') + '>' + ICON.undo + '</button></div>' +
     '<div class="stage"><div class="swipe enter"><div class="card3d' + (ses.flipped ? ' flipped' : '') + '" data-act="flip">' + facesHTML(deck, card, (S.prog[pick.item.deck] || {})[card.id]) + '</div></div></div>' +
-    '<div class="actions">' + actionsHTML() + '</div>' +
-    '<p class="hint-keys">Пробел — перевернуть, 1 — не знал, 2 — знал</p></div>';
+    '<div class="actions' + (fourButtons() ? ' four' : '') + '">' + actionsHTML() + '</div>' +
+    '<p class="hint-keys">Пробел — перевернуть, ' + (fourButtons() ? '1 — не знал, 2 — трудно, 3 — знал, 4 — легко' : '1 — не знал, 2 — знал') + '</p></div>';
   bindSwipe();
 }
 
@@ -278,7 +309,7 @@ function doneHTML() {
   let h = '<div class="finished">';
   if (!ses.done) { h += '<h1>На сегодня всё</h1><p>Карточек к повторению нет. Загляни завтра.</p>'; }
   else {
-    h += '<h1>Готово</h1><p>Ответов: ' + ses.done + ', из них «знал»: ' + ses.good + '.</p>';
+    h += '<h1>Готово</h1><p>Ответов: ' + ses.done + ', из них ' + (fourButtons() ? 'вспомнил' : '«знал»') + ': ' + ses.good + '.</p>';
     if (S.settings.streak) h += '<p>' + (st.todayDone ? 'День засчитан. Серия: ' + st.streak + ' ' + plural(st.streak, 'день', 'дня', 'дней') + '.' : 'До зачёта дня осталось ' + Math.max(0, S.settings.goal - st.todayN) + ' ответов.') + '</p>';
   }
   return h + '<button class="primary" data-act="finish">На главную</button></div>';
@@ -312,9 +343,11 @@ function flip() {
   const a = $('.actions'); if (a) a.innerHTML = actionsHTML();
 }
 // Ответ: новое состояние карточки, статистика дня и запись журнала — одной транзакцией.
-function answer(good) {
+// rating — оценка: Rating.Again («Не знал»), Hard («Трудно»), Good («Знал»), Easy («Легко»).
+function answer(rating) {
   const ses = S.session; if (!ses || !ses.flipped || !ses.current) return;
-  const { rec, day, log } = answerCard(S, ses, S.scheduler, good, ses.answerAt, dayIndex(ses.answerAt));
+  if (!answerRatings().includes(rating)) return;
+  const { rec, day, log } = answerCard(S, ses, S.scheduler, rating, ses.answerAt, dayIndex(ses.answerAt));
   saved(S.db.write(['cardState', 'stats', 'reviewLog'], s => {
     s.cardState.put(rec);
     s.stats.put(day);
@@ -358,7 +391,7 @@ function bindSwipe() {
   const end = () => {
     if (!active) return; active = false; sw.style.transition = '';
     if (horiz) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 350); }
-    if (horiz && Math.abs(dx) > 90) answer(dx > 0);
+    if (horiz && Math.abs(dx) > 90) answer(dx > 0 ? Rating.Good : Rating.Again); // свайп вправо — «Знал», влево — «Не знал»
     else { sw.style.transform = ''; sw.dataset.dir = ''; }
   };
   sw.addEventListener('pointerup', end); sw.addEventListener('pointercancel', end);
@@ -378,9 +411,17 @@ $('#sheet').addEventListener('click', ev => {
   if (ev.target.matches('.sheet-wrap') || ev.target.closest('[data-close-btn]')) closeSheet();
 });
 
-function deckOptions(sel) {
+// Список колод для «Где лежит». skip — колоды, которых в списке быть не должно (вместе с их подколодами).
+function deckOptions(sel, skip = []) {
   const out = ['<option value="">Верхний уровень</option>'];
-  const walk = (pid, depth) => { if (depth > 5) return; for (const d of childrenOf(S.decks, pid)) { out.push('<option value="' + esc(d.id) + '"' + (d.id === sel ? ' selected' : '') + '>' + '  '.repeat(depth) + esc(d.name) + '</option>'); walk(d.id, depth + 1); } };
+  const walk = (pid, depth) => {
+    if (depth > 5) return;
+    for (const d of childrenOf(S.decks, pid)) {
+      if (skip.includes(d.id)) continue;
+      out.push('<option value="' + esc(d.id) + '"' + (d.id === sel ? ' selected' : '') + '>' + '  '.repeat(depth) + esc(d.name) + '</option>');
+      walk(d.id, depth + 1);
+    }
+  };
   walk(null, 0); return out.join('');
 }
 function openDeckForm(parentId) {
@@ -399,34 +440,172 @@ function openDeckForm(parentId) {
       putDeck(d); closeSheet(); S.view = { name: 'deck', id: d.id }; render(); window.scrollTo(0, 0);
     });
 }
-function openCardForm(deckId) {
-  const d = S.decks[deckId]; if (!d) return; const t = typeOf(d);
-  let f;
-  if (t === 'kz') f = '<label>По-русски<input name="ru" autocomplete="off"></label><label>Қазақша<input name="kz" autocomplete="off" lang="kk"></label><label>Заметка, если нужна<input name="note" autocomplete="off"></label>';
-  else if (t === 'kzru') f = '<label>Қазақша<input name="kz" autocomplete="off" lang="kk"></label><label>По-русски<input name="ru" autocomplete="off"></label><label>Заметка, если нужна<input name="note" autocomplete="off"></label>';
-  else if (t === 'en') f = '<label>Слово<input name="word" autocomplete="off" autocapitalize="off" lang="en"></label>' +
-    '<label>Транскрипция<input name="ipa" autocomplete="off" placeholder="/ˈstʌbən/"></label>' +
-    '<label>Перевод<input name="ru" autocomplete="off"></label>' +
-    '<label>Пояснение на английском<input name="def" autocomplete="off" lang="en" placeholder="unwilling to change your opinion"></label>' +
-    '<label>Предложения, по одному на строку<textarea name="sentences" lang="en" placeholder="He was too {stubborn} to say sorry."></textarea></label>' +
-    '<p class="help">Слово в предложении возьми в фигурные скобки: на карточке на его месте будет пропуск.</p>';
-  else f = '<label>Вопрос<textarea name="q"></textarea></label><label>Ответ<textarea name="a"></textarea></label>';
-  openSheet('<h2>Карточка в «' + esc(d.name) + '»</h2>' + f +
-    '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Готово</button><button class="btn dark">Добавить</button></div>',
+// Изменить колоду: название и где она лежит. Тип не меняется — у разных типов разные поля карточек.
+function openDeckEdit(id) {
+  const d = S.decks[id]; if (!d) return;
+  const parent = d.parent && S.decks[d.parent] ? d.parent : '';
+  openSheet('<h2>Колода</h2>' +
+    '<label>Название<input name="name" maxlength="80" autocomplete="off" value="' + esc(d.name) + '"></label>' +
+    '<label>Где лежит<select name="parent">' + deckOptions(parent, [id]) + '</select></label>' +
+    '<p class="help">Тип: ' + esc(TYPES[typeOf(d)].label.toLowerCase()) + '. Его не поменять: у разных типов разные поля карточек.</p>' +
+    '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Отмена</button><button class="btn dark">Сохранить</button></div>',
     form => {
-      const v = n => { const el = form.elements.namedItem(n); return el ? el.value.trim() : ''; };
-      let c;
-      if (t === 'kz' || t === 'kzru') { if (!v('ru') || !v('kz')) { toast('Нужны оба поля: русский и казахский.'); return; } c = { ru: v('ru'), kz: v('kz') }; if (v('note')) c.note = v('note'); }
-      else if (t === 'en') {
-        if (!v('word')) { toast('Впиши слово.'); return; }
-        c = { word: v('word'), ipa: v('ipa'), ru: v('ru'), def: v('def'), sentences: v('sentences').split('\n').map(s => s.trim()).filter(Boolean) };
-      } else { if (!v('q') || !v('a')) { toast('Нужны и вопрос, и ответ.'); return; } c = { q: v('q'), a: v('a') }; }
-      c.id = uid36('c');
+      const F = n => form.elements.namedItem(n);
+      const name = F('name').value.trim(); if (!name) { toast('Впиши название колоды.'); return; }
+      const cur = S.decks[id]; if (!cur) { closeSheet(); return; }
+      const to = F('parent').value || null;
+      if (!canMove(S.decks, id, to)) { toast('Колоду нельзя положить внутрь неё самой.'); return; }
+      putDeck({ ...cur, name, parent: to }); closeSheet(); render(); toast('Колода сохранена.');
+    });
+}
+
+// Поля формы карточки. c — карточка, которую исправляем (для новой — пустой объект).
+function cardFieldsHTML(t, c) {
+  const val = k => ' value="' + esc(c[k] || '') + '"';
+  if (t === 'kz' || t === 'kzru') {
+    const ru = '<label>По-русски<input name="ru" autocomplete="off"' + val('ru') + '></label>';
+    const kz = '<label>Қазақша<input name="kz" autocomplete="off" lang="kk"' + val('kz') + '></label>';
+    return (t === 'kz' ? ru + kz : kz + ru) + '<label>Заметка, если нужна<input name="note" autocomplete="off"' + val('note') + '></label>';
+  }
+  if (t === 'en') return '<label>Слово<input name="word" autocomplete="off" autocapitalize="off" lang="en"' + val('word') + '></label>' +
+    '<label>Транскрипция<input name="ipa" autocomplete="off" placeholder="/ˈstʌbən/"' + val('ipa') + '></label>' +
+    '<label>Перевод<input name="ru" autocomplete="off"' + val('ru') + '></label>' +
+    '<label>Пояснение на английском<input name="def" autocomplete="off" lang="en" placeholder="unwilling to change your opinion"' + val('def') + '></label>' +
+    '<label>Предложения, по одному на строку<textarea name="sentences" lang="en" placeholder="He was too {stubborn} to say sorry.">' + esc((c.sentences || []).join('\n')) + '</textarea></label>' +
+    '<p class="help">Слово в предложении возьми в фигурные скобки: на карточке на его месте будет пропуск.</p>';
+  return '<label>Вопрос<textarea name="q">' + esc(c.q || '') + '</textarea></label><label>Ответ<textarea name="a">' + esc(c.a || '') + '</textarea></label>';
+}
+
+// Добавить карточку (cardId не задан) или исправить карточку cardId. after — что сделать после сохранения
+// исправления (во время занятия — перерисовать карточку); по умолчанию — перерисовать экран.
+function openCardForm(deckId, cardId = null, after = render) {
+  const d = S.decks[deckId]; if (!d) return; const t = typeOf(d);
+  const old = cardId ? (d.cards || []).find(c => c.id === cardId) : null;
+  if (cardId && !old) return;
+  openSheet('<h2>' + (old ? 'Исправить карточку' : 'Карточка в «' + esc(d.name) + '»') + '</h2>' + cardFieldsHTML(t, old || {}) +
+    (old ? '<p class="help">Прогресс по карточке сохранится.</p>' : '') +
+    '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">' + (old ? 'Отмена' : 'Готово') + '</button>' +
+    '<button class="btn dark">' + (old ? 'Сохранить' : 'Добавить') + '</button></div>',
+    form => {
+      const card = cardFromForm(t, n => { const el = form.elements.namedItem(n); return el ? el.value : ''; });
+      const problem = cardProblem(t, card);
+      if (problem) { toast(problem[0].toUpperCase() + problem.slice(1) + '.'); return; }
       const cur = S.decks[deckId]; if (!cur) { closeSheet(); return; }
-      putDeck({ ...cur, cards: (cur.cards || []).concat([c]) });
+      if (old) {
+        putDeck(updateCard(cur, cardId, card)); closeSheet(); after(); toast('Карточка сохранена.');
+        return;
+      }
+      putDeck({ ...cur, cards: (cur.cards || []).concat([{ ...card, id: uid36('c') }]) });
       form.reset(); toast('Карточка добавлена.'); render();
       const first = $('input,textarea', form); if (first) first.focus();
     });
+}
+
+/* ---------- добавить колоды: от Claude и из файла ---------- */
+// Как это устроено — см. начало js/claude.js.
+
+// Что добавится — список под полем, до нажатия «Добавить».
+function importPreviewHTML(r) {
+  const n = k => k + ' ' + plural(k, 'карточка', 'карточки', 'карточек');
+  const items = r.details.map(x => {
+    const where = x.parent && r.decks[x.parent] ? ' · внутри «' + esc(r.decks[x.parent].name) + '»' : '';
+    if (x.isNew) return '<li><b>Новая колода «' + esc(x.name) + '»</b>: ' + n(x.added) + where + (x.skipped ? ', повторы пропущены: ' + x.skipped : '') + '</li>';
+    if (x.added) return '<li><b>«' + esc(x.name) + '»</b>: +' + n(x.added) + (x.skipped ? ', уже были: ' + x.skipped : '') + '</li>';
+    return '<li><b>«' + esc(x.name) + '»</b>: ничего нового, все ' + n(x.skipped) + ' уже есть</li>';
+  });
+  return '<p class="add-ok">Добавится:</p><ul class="add-list">' + items.join('') + '</ul>';
+}
+
+function openAddSheet(targetId = null) {
+  const target = targetId && S.decks[targetId] ? S.decks[targetId] : null;
+  const form = openSheet('<h2>' + (target ? 'Карточки от Claude' : 'Добавить колоды') + '</h2>' +
+    (target ? '<p class="lead">Для колоды «' + esc(target.name) + '». Инструкция подскажет Claude, какие карточки в ней уже есть.</p>' : '') +
+    '<ol class="steps">' +
+      '<li>Скопируй инструкцию и вставь её в чат с Claude. Ниже допиши, что нужно, например: «30 карточек на тему "Қала"».</li>' +
+      '<li>В ответе Claude нажми «Копировать» у блока с кодом.</li>' +
+      '<li>Вернись сюда, нажми «Вставить ответ Claude», проверь, что добавится, и нажми «Добавить».</li>' +
+    '</ol>' +
+    '<div class="data-btns">' +
+      '<button type="button" class="btn ghost" data-add="copy">Скопировать инструкцию для Claude</button>' +
+      '<button type="button" class="btn ghost" data-add="paste">Вставить ответ Claude</button>' +
+    '</div>' +
+    '<div data-copy-box></div>' +
+    '<label class="paste-box">Ответ Claude<textarea name="paste" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder=\'{"decks": [ … ]}\'></textarea></label>' +
+    '<div data-add-preview></div>' +
+    '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Отмена</button><button class="btn dark" data-add-ok disabled>Добавить</button></div>' +
+    (target ? '' :
+      '<h3 class="sheet-sec">Или</h3>' +
+      '<div class="data-btns">' +
+        '<button type="button" class="btn ghost" data-add="new">Создать колоду самому</button>' +
+        '<button type="button" class="btn ghost" data-add="file">Добавить из файла</button>' +
+      '</div>' +
+      '<p class="help" style="margin-top:12px">Файл — в формате decks.json. Колоды с тем же id дополняются новыми карточками, прогресс не теряется.</p>' +
+      '<input type="file" accept=".json,application/json" hidden data-file>'),
+    () => importText(area.value, parsePasted));
+
+  const area = form.elements.namedItem('paste'), box = $('[data-add-preview]', form), ok = $('[data-add-ok]', form);
+  let lastError = '', timer = null;
+  // Пока вставляешь или правишь текст — сразу показываем, что добавится, или что не так.
+  const update = () => {
+    lastError = ''; ok.disabled = true;
+    if (!area.value.trim()) { box.innerHTML = ''; return; }
+    try {
+      const r = mergeDecks(S.decks, parsePasted(area.value));
+      box.innerHTML = importPreviewHTML(r);
+      ok.disabled = !r.changed.length;
+    } catch (e) {
+      lastError = e.message;
+      box.innerHTML = '<p class="add-err">' + esc(e.message) + '</p>' +
+        '<p class="help">Перешли эту ошибку Claude — он исправит. <button type="button" class="link inline" data-add="copy-err">Скопировать ошибку</button></p>';
+    }
+  };
+  area.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(update, 200); });
+
+  // Скопировать текст. Если браузер не дал, показываем текст в поле и выделяем его — останется нажать
+  // «Скопировать» в меню iPhone.
+  const copyBox = $('[data-copy-box]', form);
+  const copy = (text, done) => navigator.clipboard.writeText(text).then(() => { copyBox.innerHTML = ''; toast(done); })
+    .catch(() => {
+      copyBox.innerHTML = '<textarea readonly class="copy-area" aria-label="Текст для копирования"></textarea>';
+      const t = $('textarea', copyBox); t.value = text; t.focus(); t.select();
+      toast('Не получилось скопировать само — текст выделен ниже, скопируй его.');
+    });
+  const fileInput = $('[data-file]', form);
+  if (fileInput) fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0]; if (!file) return;
+    importText(await file.text(), parseDeckFile);
+  });
+  form.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-add]'); if (!b) return;
+    const act = b.dataset.add;
+    if (act === 'copy') copy(claudeInstructions(S.decks, target && target.id), 'Инструкция скопирована. Вставь её в чат с Claude и допиши, что нужно.');
+    else if (act === 'copy-err') copy('Приложение не приняло карточки: ' + lastError + ' Исправь, пожалуйста, и пришли JSON целиком заново.', 'Ошибка скопирована — вставь её в чат с Claude.');
+    else if (act === 'paste') {
+      // На iPhone появится кнопка «Вставить» — её нужно нажать: так iOS спрашивает разрешение на буфер обмена.
+      navigator.clipboard.readText()
+        .then(t => { area.value = t; update(); })
+        .catch(() => { area.focus(); toast('Не получилось вставить само: нажми в поле и выбери «Вставить».'); });
+    }
+    else if (act === 'new') { closeSheet(); openDeckForm(null); }
+    else if (act === 'file') { fileInput.value = ''; fileInput.click(); }
+  });
+}
+
+// Добавить колоды из текста. parse — как его разбирать: parsePasted (ответ Claude) или parseDeckFile (файл).
+async function importText(text, parse) {
+  let r;
+  try { r = mergeDecks(S.decks, parse(text)); } catch (e) { toast(e.message); return; }
+  if (!r.changed.length) { toast('Ничего нового: все эти карточки уже есть.'); return; }
+  try { await S.db.write(['decks'], st => r.changed.forEach(d => st.decks.put(d))); }
+  catch (e) { console.error(e); toast('Не удалось сохранить колоды: ' + ((e && e.message) || e)); return; }
+  S.decks = r.decks;
+  closeSheet();
+  // Одна колода — сразу открываем её, чтобы было видно, что добавилось.
+  const touched = r.details.filter(x => x.isNew || x.added);
+  if (touched.length === 1) S.view = { name: 'deck', id: touched[0].id };
+  render(); window.scrollTo(0, 0);
+  toast('Добавлено: ' + r.addedDecks + ' ' + plural(r.addedDecks, 'колода', 'колоды', 'колод') + ', ' +
+    r.addedCards + ' ' + plural(r.addedCards, 'карточка', 'карточки', 'карточек') + '.');
 }
 
 function lastBackupLine() {
@@ -450,7 +629,15 @@ function openSettings() {
     '<p class="help">Какую долю карточек ты вспоминаешь, когда они приходят на повторение. Выше — меньше забываешь, но больше повторений каждый день. ' +
       '90 % — хороший выбор. Новое значение действует со следующих ответов.</p>' +
     '<p class="help">«Выучено» — карточки, которые ты, по расчёту FSRS, будешь помнить хотя бы 3 недели.</p>' +
+    '<label>Кнопки ответа<select name="btns">' +
+      '<option value="2"' + (st.buttons === 4 ? '' : ' selected') + '>Две: «Не знал» и «Знал»</option>' +
+      '<option value="4"' + (st.buttons === 4 ? ' selected' : '') + '>Четыре: ещё «Трудно» и «Легко»</option></select></label>' +
+    '<p class="help">«Трудно» — вспомнил, но с трудом: карточка вернётся чуть раньше, чем после «Знал». ' +
+      '«Легко» — знал сразу: вернётся намного позже. Свайпы те же: влево — «Не знал», вправо — «Знал».</p>' +
     '<div class="row"><button type="button" class="btn ghost" data-close-btn="1">Отмена</button><button class="btn dark">Сохранить</button></div>' +
+    '<h3 class="sheet-sec">Тема</h3>' +
+    '<div class="themes" data-themes>' + themesHTML() + '</div>' +
+    '<p class="help">Тема меняется сразу.</p>' +
     '<h3 class="sheet-sec">Напоминания</h3>' +
     '<div data-push-box></div>' +
     '<h3 class="sheet-sec">Данные</h3>' +
@@ -459,10 +646,9 @@ function openSettings() {
     '<div class="data-btns">' +
       '<button type="button" class="btn dark" data-data="backup">Сделать резервную копию</button>' +
       '<button type="button" class="btn ghost" data-data="restore">Восстановить из копии</button>' +
-      '<button type="button" class="btn ghost" data-data="import">Импортировать колоды</button>' +
       (S.hasFsrsSnapshot ? '<button type="button" class="btn ghost" data-data="snapshot">Скачать копию до перехода на FSRS</button>' : '') +
     '</div>' +
-    '<p class="help" style="margin-top:12px">Импорт — файл в формате decks.json. Колоды с тем же id дополняются новыми карточками, прогресс не теряется.</p>' +
+    '<p class="help" style="margin-top:12px">Новые колоды — от Claude или из файла — добавляются кнопкой «Добавить» на главном экране.</p>' +
     (S.hasFsrsSnapshot ? '<p class="help">Копия до перехода на FSRS — данные в том виде, какими они были до обновления. Её можно восстановить кнопкой «Восстановить из копии».</p>' : '') +
     '<input type="file" accept=".json,application/json" hidden data-file>' +
     (inIosSafari ? '<button type="button" class="link" style="padding-left:0" data-install-hint>Как установить на экран «Домой»</button>' : '') +
@@ -472,7 +658,7 @@ function openSettings() {
       const np = Math.max(0, Math.min(200, parseInt(F('np').value, 10) || 0));
       const goal = Math.max(1, Math.min(500, parseInt(F('goal').value, 10) || 1));
       const retention = Math.max(80, Math.min(95, parseInt(F('ret').value, 10) || 90)) / 100;
-      S.settings = { newPerDay: np, goal, streak: F('streak').checked, retention };
+      S.settings = { ...S.settings, newPerDay: np, goal, streak: F('streak').checked, retention, buttons: F('btns').value === '4' ? 4 : 2 };
       S.scheduler = makeScheduler(retention);
       saved(S.db.write(['settings'], s => s.settings.put({ key: 'prefs', ...S.settings })));
       closeSheet(); render();
@@ -487,6 +673,7 @@ function openSettings() {
   let fileMode = null;
   form.addEventListener('click', ev => {
     if (ev.target.closest('[data-install-hint]')) { showInstallHint(); return; }
+    const th = ev.target.closest('[data-theme-id]'); if (th) { chooseTheme(th.dataset.themeId, form); return; }
     const p = ev.target.closest('[data-push]'); if (p) { pushAction(p.dataset.push, pushBox); return; }
     const b = ev.target.closest('[data-data]'); if (!b) return;
     if (b.dataset.data === 'backup') doBackup();
@@ -496,7 +683,7 @@ function openSettings() {
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files && fileInput.files[0]; if (!file) return;
     const text = await file.text();
-    if (fileMode === 'restore') restoreFrom(text); else importDecks(text);
+    if (fileMode === 'restore') restoreFrom(text);
   });
 }
 
@@ -638,19 +825,6 @@ async function restoreFrom(text) {
   toast('Данные восстановлены из копии.');
 }
 
-async function importDecks(text) {
-  let list;
-  try { list = parseDeckFile(text); } catch (e) { toast(e.message); return; }
-  const r = mergeDecks(S.decks, list);
-  if (!r.changed.length) { toast('Ничего нового: все эти карточки уже есть.'); return; }
-  try { await S.db.write(['decks'], s => r.changed.forEach(d => s.decks.put(d))); }
-  catch (e) { console.error(e); toast('Не удалось сохранить колоды: ' + ((e && e.message) || e)); return; }
-  S.decks = r.decks;
-  closeSheet(); render();
-  toast('Добавлено: ' + r.addedDecks + ' ' + plural(r.addedDecks, 'колода', 'колоды', 'колод') + ', ' +
-    r.addedCards + ' ' + plural(r.addedCards, 'карточка', 'карточки', 'карточек') + '.');
-}
-
 /* ---------- удаление ---------- */
 function deleteDeck(id) {
   const d = S.decks[id]; if (!d) return;
@@ -674,12 +848,124 @@ function deleteCard(deckId, cardId) {
   render();
 }
 
+/* ---------- темы ---------- */
+// Список тем — в js/themes.js, цвета — в css/app.css. Тема — атрибут data-theme у <html>;
+// «Как в системе» — без атрибута, тогда светлая или тёмная выбирается по настройке iPhone.
+
+// Включить тему: атрибут, цвет полосы со временем вверху экрана и копия в localStorage для index.html.
+function applyTheme(id) {
+  const theme = isTheme(id) ? id : DEFAULT_THEME, root = document.documentElement;
+  if (theme === DEFAULT_THEME) delete root.dataset.theme; else root.dataset.theme = theme;
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* в приватном режиме localStorage может не работать */ }
+  const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
+  for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
+    if (!m.dataset.system) m.dataset.system = m.content; // исходные цвета из index.html — для «Как в системе»
+    m.content = theme === DEFAULT_THEME ? m.dataset.system : bg;
+  }
+}
+
+// Образцы тем в настройках. Каждый образец рисуется цветами своей темы: атрибут data-swatch
+// подставляет её переменные (см. css/app.css).
+function themesHTML() {
+  return THEMES.map(t => '<button type="button" class="theme-sw" data-theme-id="' + t.id + '" aria-pressed="' + (S.settings.theme === t.id) + '">' +
+    '<span class="pv" data-swatch="' + t.id + '" aria-hidden="true"><span class="pv-card"><i></i><i></i></span>' +
+    '<span class="pv-dots"><i style="background:var(--kz)"></i><i style="background:var(--en)"></i><i style="background:var(--qa)"></i></span></span>' +
+    '<span class="nm">' + esc(t.name) + '</span></button>').join('');
+}
+
+function chooseTheme(id, form) {
+  if (!isTheme(id)) return;
+  S.settings = { ...S.settings, theme: id };
+  applyTheme(id);
+  saved(S.db.write(['settings'], s => s.settings.put({ key: 'prefs', ...S.settings })));
+  for (const b of form.querySelectorAll('[data-theme-id]')) b.setAttribute('aria-pressed', String(b.dataset.themeId === id));
+}
+
+/* ---------- статистика ---------- */
+// Подсчёты — в js/stats.js. Журнал ответов в памяти не держим: читаем его из базы, когда открывается экран.
+
+function openStats() {
+  S.view = { name: 'stats' }; S.statsLogs = null; S.statsSel = { answers: 29, forecast: 0 };
+  render(); window.scrollTo(0, 0);
+  S.db.getAll('reviewLog')
+    .then(logs => { S.statsLogs = logs; })
+    .catch(e => { console.error(e); S.statsLogs = []; toast('Не удалось прочитать журнал ответов.'); })
+    .then(() => { if (S.view.name === 'stats') render(); });
+}
+
+const dayLabel = (d, opts) => new Date(dayStart(d)).toLocaleDateString('ru-RU', opts);
+const dayFull = d => { const t = dayLabel(d, { weekday: 'short', day: 'numeric', month: 'long' }); return t[0].toUpperCase() + t.slice(1); };
+const pct = x => x == null ? '—' : Math.round(x * 100) + ' %';
+const nAnswers = n => n + ' ' + plural(n, 'ответ', 'ответа', 'ответов');
+const nCards = n => n + ' ' + plural(n, 'карточка', 'карточки', 'карточек');
+
+// Столбики без библиотек. items — [{ n, … }], sel — выбранный столбик (его подпись показана под графиком),
+// label(x, i) — подпись под столбиком (может быть пустой), describe(x, i) — полный текст про столбик.
+function barsHTML(chart, items, sel, label, describe) {
+  const top = Math.max(0, ...items.map(x => x.n)), max = top || 1;
+  // Линия сверху — самое большое значение (подпись справа); если всё по нулям, линии нет.
+  let h = '<div class="chart"><div class="bars">' + (top ? '<span class="gmax">' + top + '</span>' : '');
+  items.forEach((x, i) => {
+    h += '<button type="button" data-act="bar" data-chart="' + chart + '" data-i="' + i + '" aria-pressed="' + (i === sel) + '" aria-label="' + esc(describe(x, i)) + '">' +
+      (x.n ? '<i style="height:' + (x.n / max * 100).toFixed(1) + '%"></i>' : '') + '</button>';
+  });
+  h += '</div><div class="axis" aria-hidden="true">' + items.map((x, i) => '<span' + (i === sel ? ' class="on"' : '') + '>' + label(x, i) + '</span>').join('') + '</div>';
+  return h + '<p class="readout" aria-live="polite">' + esc(describe(items[sel], sel)) + '</p></div>';
+}
+
+function tableHTML(head, rows) {
+  return '<details class="tbl"><summary>Числа таблицей</summary><table><thead><tr>' + head.map(x => '<th>' + x + '</th>').join('') + '</tr></thead><tbody>' +
+    rows.map(r => '<tr>' + r.map(x => '<td>' + esc(x) + '</td>').join('') + '</tr>').join('') + '</tbody></table></details>';
+}
+
+function statsHTML() {
+  let h = '<button class="back-btn" data-act="home">' + ICON.back + 'Колоды</button><h1 class="deck-h stats-h">Статистика</h1>';
+  if (!S.statsLogs) return h + '<div class="empty"><p>Загружаю…</p></div>';
+  const today = dayIndex(), logs = S.statsLogs, sel = S.statsSel;
+  const days = answersByDay(S.days, logs, today, 30), fc = forecast(S, today, 14), t = totals(S, today);
+  const week = goodShare(logs, today, 7), month = goodShare(logs, today, 30);
+  const sum = days.reduce((a, d) => a + d.n, 0), done = days.filter(d => d.done).length;
+
+  h += '<div class="tiles">' +
+    '<div class="tile"><span class="lb">Ответов за 30 дней</span><b class="vl">' + sum + '</b><span class="sub">засчитано дней: ' + done + '</span></div>' +
+    '<div class="tile"><span class="lb">«Знал» за 7 дней</span><b class="vl">' + pct(week.share) + '</b><span class="sub">за 30 дней: ' + pct(month.share) + '</span></div>' +
+    '<div class="tile"><span class="lb">Выучено</span><b class="vl">' + t.learned + '</b><span class="sub">из ' + nCards(t.total) + '</span></div>' +
+    '<div class="tile"><span class="lb">Изучаются</span><b class="vl">' + t.learning + '</b><span class="sub">новых: ' + t.nw + '</span></div>' +
+  '</div>';
+
+  const describeDay = x => {
+    if (!x.n) return dayFull(x.day) + ': ответов не было';
+    if (!x.logged) return dayFull(x.day) + ': ' + nAnswers(x.n) + ' (до перехода на FSRS оценки не записывались)';
+    return dayFull(x.day) + ': ' + nAnswers(x.n) + ', «знал» — ' + x.good + ' (' + pct(x.good / x.logged) + ')';
+  };
+  h += '<div class="sec"><h2>Ответы по дням</h2></div>' +
+    barsHTML('answers', days, sel.answers, (x, i) => (days.length - 1 - i) % 7 ? '' : dayLabel(x.day, { day: 'numeric', month: 'numeric' }), describeDay) +
+    tableHTML(['День', 'Ответов', '«Знал»'], days.slice().reverse().map(x => [dayFull(x.day), String(x.n), x.logged ? x.good + ' (' + pct(x.good / x.logged) + ')' : '—']));
+
+  const describeFc = (x, i) => (i ? dayFull(x.day) : 'Сегодня') + ': ' + nCards(x.n) + ' на повторение' + (i ? '' : ', вместе с просроченными');
+  h += '<div class="sec"><h2>Прогноз на 2 недели</h2></div>' +
+    barsHTML('forecast', fc, sel.forecast, x => dayLabel(x.day, { day: 'numeric' }), describeFc) +
+    '<p class="note">Сколько карточек придёт на повторение, если повторять всё вовремя. Новые не считаются: их до ' +
+      S.settings.newPerDay + ' в день на колоду.</p>' +
+    tableHTML(['День', 'Карточек'], fc.map((x, i) => [i ? dayFull(x.day) : 'Сегодня', String(x.n)]));
+
+  h += '<p class="note stats-foot">За всё время: ' + nAnswers(t.answers) + ', засчитано дней: ' + t.daysDone + '.' +
+    (logs.length < t.answers ? ' Доля «знал» считается с перехода на FSRS: раньше оценки не записывались.' : '') + '</p>';
+  return h;
+}
+
 /* ---------- events ---------- */
 $('#app').addEventListener('click', ev => {
   const b = ev.target.closest('[data-act]'); if (!b || b.disabled) return;
   const act = b.dataset.act, id = b.dataset.id;
   switch (act) {
     case 'settings': openSettings(); break;
+    case 'stats': openStats(); break;
+    case 'bar': S.statsSel = { ...S.statsSel, [b.dataset.chart]: +b.dataset.i }; render(); break;
+    case 'add': openAddSheet(id || null); break;
+    case 'edit-deck': openDeckEdit(id); break;
+    case 'edit-card': openCardForm(b.dataset.deck, b.dataset.card); break;
+    case 'edit-current': { const c = S.session && S.session.current; if (c) openCardForm(c.item.deck, c.item.card, renderStudy); break; }
     case 'home': S.view = { name: 'home' }; render(); window.scrollTo(0, 0); break;
     case 'open-deck': S.view = { name: 'deck', id }; render(); window.scrollTo(0, 0); break;
     case 'study-all': startStudy(Object.keys(S.decks), { name: 'home' }); break;
@@ -689,8 +975,7 @@ $('#app').addEventListener('click', ev => {
     case 'del-card': deleteCard(b.dataset.deck, b.dataset.card); break;
     case 'del-deck': deleteDeck(id); break;
     case 'flip': if (suppressClick) return; flip(); break;
-    case 'good': answer(true); break;
-    case 'bad': answer(false); break;
+    case 'answer': answer(+b.dataset.rating); break;
     case 'undo': undo(); break;
     case 'close': case 'finish': endStudy(); break;
   }
@@ -700,8 +985,12 @@ document.addEventListener('keydown', ev => {
   if (S.view.name !== 'study' || !S.session) return;
   if (ev.target.closest && ev.target.closest('input,textarea,select')) return;
   if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); if (S.session.current) flip(); else endStudy(); }
-  else if ((ev.key === '1' || ev.key === 'ArrowLeft') && S.session.flipped) answer(false);
-  else if ((ev.key === '2' || ev.key === 'ArrowRight') && S.session.flipped) answer(true);
+  else if (S.session.flipped && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) answer(ev.key === 'ArrowLeft' ? Rating.Again : Rating.Good);
+  else if (S.session.flipped && /^[1-4]$/.test(ev.key)) {
+    // 1 — «Не знал», последняя цифра — «Знал» или «Легко»: 1–2 для двух кнопок, 1–4 для четырёх.
+    const r = answerRatings()[+ev.key - 1];
+    if (r) answer(r);
+  }
   else if (ev.key === 'Escape') endStudy();
   else if ((ev.key === 'z' || ev.key === 'я') && (ev.metaKey || ev.ctrlKey)) undo();
 });
