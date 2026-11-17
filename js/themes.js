@@ -4,17 +4,22 @@
 // Как добавить тему: допиши её сюда и добавь в css/app.css блок с теми же переменными, что у других тем.
 // Тест tests/themes.test.js проверит, что все переменные на месте и текст читается (контраст).
 
+// Сначала светлые, потом тёмные.
 export const THEMES = [
   { id: 'auto', name: 'Как в системе' },
   { id: 'light', name: 'Светлая' },
-  { id: 'dark', name: 'Тёмная' },
   { id: 'paper', name: 'Бумага' },
   { id: 'mint', name: 'Мята' },
   { id: 'sky', name: 'Небо' },
+  { id: 'dark', name: 'Тёмная' },
   { id: 'concrete', name: 'Бетон' },
   { id: 'graphite', name: 'Графит' },
   { id: 'ash', name: 'Пепел' },
-  { id: 'nebula', name: 'Туманность' }
+  { id: 'nebula', name: 'Туманность' },
+  { id: 'tush', name: 'Тушь' },
+  { id: 'wormwood', name: 'Полынь' },
+  { id: 'deep', name: 'Глубина' },
+  { id: 'garnet', name: 'Гранат' }
 ];
 
 export const DEFAULT_THEME = 'auto';
