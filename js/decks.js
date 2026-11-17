@@ -62,6 +62,14 @@ export function deckCounts(S, id, withKids, today) {
   return c;
 }
 
+// Сколько карточек на сегодня во всех колодах: число на кнопке «Повторить всё» и на иконке приложения.
+// Такое же число считает sw.js для напоминания (тест tests/push.test.js проверяет, что они совпадают).
+export function todayTotal(S, today) {
+  let n = 0;
+  for (const id in S.decks) n += deckCounts(S, id, false, today).today;
+  return n;
+}
+
 function shuffle(a, random) {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a;

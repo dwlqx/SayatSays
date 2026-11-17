@@ -1,12 +1,13 @@
 {
   "name": "sayatsays",
   "private": true,
-  "description": "Карточки для интервального повторения. Сборщика нет: package.json нужен только для тестов.",
+  "description": "Карточки для интервального повторения. Сборщика нет: package.json нужен только для тестов и для отправки напоминаний (tools/).",
   "type": "module",
   "scripts": {
     "test": "node --test"
   },
   "devDependencies": {
-    "fake-indexeddb": "6.2.5"
+    "fake-indexeddb": "6.2.5",
+    "web-push": "3.6.7"
   }
 }
