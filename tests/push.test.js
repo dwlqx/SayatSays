@@ -96,6 +96,12 @@ test('тексты уведомления', () => {
   assert.deepEqual(t({ n: 0, done: true }), { title: 'На сегодня всё повторено', body: 'Можно отдыхать.' });
   assert.deepEqual(t({ n: 0, done: false }), { title: 'На сегодня всё повторено', body: 'Можно отдыхать.' });
   assert.equal(t(null).title, 'Пора повторить карточки');
+  // По-английски — если в приложении выбран английский.
+  const en = info => plain(sw.reminderText({ ...info, lang: 'en' }));
+  assert.deepEqual(en({ n: 12, done: false }), { title: '12 cards are waiting for review', body: '' });
+  assert.deepEqual(en({ n: 1, done: false }), { title: '1 card is waiting for review', body: '' });
+  assert.deepEqual(en({ n: 5, done: true }), { title: 'Today’s goal is done', body: '5 cards more — if you like.' });
+  assert.deepEqual(en({ n: 0, done: false }), { title: 'All reviewed for today', body: 'Time to rest.' });
 });
 
 // База, как на телефоне: исходные данные, переведённые на FSRS.
@@ -120,10 +126,14 @@ test('sw.js читает базу телефона: то же число, что
   const sw = loadSW({ indexedDB: factory });
   const expected = todayTotal(await stateFrom(db), TODAY);
   assert.ok(expected > 0);
-  assert.deepEqual(plain(await sw.readToday(NOW)), { n: expected, done: false });
+  // Настройки языка нет (так у всех, кто пользовался приложением до английской версии) — русский.
+  assert.deepEqual(plain(await sw.readToday(NOW)), { n: expected, done: false, lang: 'ru' });
 
   await db.write(['stats'], s => s.stats.put({ day: TODAY, n: 10, done: true, nw: {} }));
-  assert.deepEqual(plain(await sw.readToday(NOW)), { n: todayTotal(await stateFrom(db), TODAY), done: true });
+  assert.deepEqual(plain(await sw.readToday(NOW)), { n: todayTotal(await stateFrom(db), TODAY), done: true, lang: 'ru' });
+
+  await db.write(['settings'], s => s.settings.put({ key: 'prefs', newPerDay: 15, lang: 'en' }));
+  assert.equal(plain(await sw.readToday(NOW)).lang, 'en', 'язык — из настроек приложения');
   db.close();
 });
 

@@ -6,6 +6,7 @@
 //     "data": { "decks": [...], "cardState": [...], "reviewLog": [...], "settings": [...], "stats": [...] } }
 // data — это записи хранилищ как есть (см. db.js), поэтому восстановление ничего не теряет.
 
+import { t } from './i18n.js';
 import { STORES } from './db.js';
 
 export const BACKUP_FORMAT = 1;
@@ -23,15 +24,15 @@ export function backupFileName(now = Date.now()) {
 // Проверяет текст файла и возвращает копию. Если файл не тот или испорчен — ошибка с понятным текстом.
 export function parseBackup(text) {
   let b;
-  try { b = JSON.parse(text); } catch (e) { throw new Error('Файл не читается: это не JSON.'); }
-  if (b && Array.isArray(b.decks)) throw new Error('Это файл с колодами, а не резервная копия. Его добавляют кнопкой «Импортировать колоды».');
-  if (!b || b.app !== 'SayatSays' || !b.data) throw new Error('Это не резервная копия SayatSays.');
-  if (b.format > BACKUP_FORMAT) throw new Error('Копия сделана более новой версией приложения. Сначала обнови приложение.');
-  if (b.format !== BACKUP_FORMAT) throw new Error('Незнакомый формат копии.');
+  try { b = JSON.parse(text); } catch (e) { throw new Error(t('Файл не читается: это не JSON.')); }
+  if (b && Array.isArray(b.decks)) throw new Error(t('Это файл с колодами, а не резервная копия. Его добавляют кнопкой «Добавить» на главном экране.'));
+  if (!b || b.app !== 'SayatSays' || !b.data) throw new Error(t('Это не резервная копия SayatSays.'));
+  if (b.format > BACKUP_FORMAT) throw new Error(t('Копия сделана более новой версией приложения. Сначала обнови приложение.'));
+  if (b.format !== BACKUP_FORMAT) throw new Error(t('Незнакомый формат копии.'));
   for (const name of STORES) {
-    if (!Array.isArray(b.data[name])) throw new Error('Копия повреждена: нет раздела «' + name + '».');
+    if (!Array.isArray(b.data[name])) throw new Error(t('Копия повреждена: нет раздела «{name}».', { name }));
   }
-  const bad = name => { throw new Error('Копия повреждена: ошибка в разделе «' + name + '».'); };
+  const bad = name => { throw new Error(t('Копия повреждена: ошибка в разделе «{name}».', { name })); };
   if (!b.data.decks.every(d => d && typeof d.id === 'string' && Array.isArray(d.cards))) bad('decks');
   if (!b.data.cardState.every(c => c && typeof c.deck === 'string' && typeof c.card === 'string')) bad('cardState');
   if (!b.data.settings.every(s => s && typeof s.key === 'string')) bad('settings');

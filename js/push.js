@@ -10,6 +10,7 @@
 //   4. Телефон будит sw.js: тот сам считает карточки на сегодня и показывает уведомление.
 
 import { VAPID_PUBLIC_KEY } from './config.js';
+import { t } from './i18n.js';
 
 // Ключ записан в base64url (буквы, цифры, «-» и «_»), а браузеру он нужен байтами.
 export function keyToBytes(b64url) {
@@ -54,8 +55,8 @@ function sameKey(sub) {
 // fresh = true — выбросить старую подписку и сделать новую (если GitHub пишет, что подписка устарела).
 export async function enablePush(fresh = false) {
   const permission = await Notification.requestPermission();
-  if (permission === 'denied') throw new Error('Уведомления запрещены. Включи их: Настройки iPhone → Уведомления → SayatSays.');
-  if (permission !== 'granted') throw new Error('Без разрешения на уведомления напоминания не придут.');
+  if (permission === 'denied') throw new Error(t('Уведомления запрещены. Включи их: Настройки iPhone → Уведомления → SayatSays.'));
+  if (permission !== 'granted') throw new Error(t('Без разрешения на уведомления напоминания не придут.'));
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (sub && (fresh || !sameKey(sub))) { await sub.unsubscribe(); sub = null; }

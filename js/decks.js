@@ -7,6 +7,7 @@
 //   S.settings { newPerDay, goal, streak, retention }
 
 import { isNew, isLearning, isLearned, isDue } from './scheduler.js';
+import { t } from './i18n.js';
 
 export const DECK_TYPES = ['kz', 'kzru', 'en', 'qa'];
 export const typeOf = d => (d && DECK_TYPES.includes(d.type)) ? d.type : 'qa';
@@ -122,15 +123,15 @@ export const hasGap = (sentence, word) => /\{[^}]+\}/.test(sentence) || sentence
 // Что не так с карточкой — текст для человека (и для Claude, если карточку сделал он) или null, если всё хорошо.
 export function cardProblem(type, card) {
   const f = CARD_FIELDS[type];
-  for (const k of f.need) if (!isText(card[k])) return 'не заполнено поле «' + FIELD_NAMES[k] + '»';
-  for (const k of f.opt) if (card[k] != null && typeof card[k] !== 'string') return 'поле «' + FIELD_NAMES[k] + '» должно быть текстом';
+  for (const k of f.need) if (!isText(card[k])) return t('не заполнено поле «{field}»', { field: t(FIELD_NAMES[k]) });
+  for (const k of f.opt) if (card[k] != null && typeof card[k] !== 'string') return t('поле «{field}» должно быть текстом', { field: t(FIELD_NAMES[k]) });
   if (type === 'en') {
     const ss = card.sentences;
-    if (ss != null && (!Array.isArray(ss) || ss.some(x => typeof x !== 'string'))) return 'sentences должно быть списком предложений';
+    if (ss != null && (!Array.isArray(ss) || ss.some(x => typeof x !== 'string'))) return t('sentences должно быть списком предложений');
     const list = (ss || []).filter(isText);
-    if (!list.length && !isText(card.def) && !isText(card.ru)) return 'нужно хотя бы одно предложение, пояснение (def) или перевод (ru)';
+    if (!list.length && !isText(card.def) && !isText(card.ru)) return t('нужно хотя бы одно предложение, пояснение (def) или перевод (ru)');
     const bad = list.find(x => !hasGap(x, card.word));
-    if (bad) return 'в предложении «' + bad + '» нет слова «' + card.word + '» — возьми его в {фигурные скобки}';
+    if (bad) return t('в предложении «{s}» нет слова «{word}» — возьми его в {фигурные скобки}', { s: bad, word: card.word });
   }
   return null;
 }
@@ -138,8 +139,8 @@ export function cardProblem(type, card) {
 // Короткая подпись карточки для сообщений: первое заполненное обязательное поле.
 export function cardLabel(type, card) {
   const k = CARD_FIELDS[type].need.find(n => isText(card[n]));
-  const t = k ? card[k].trim() : '';
-  return t.length > 40 ? t.slice(0, 39) + '…' : t;
+  const s = k ? card[k].trim() : '';
+  return s.length > 40 ? s.slice(0, 39) + '…' : s;
 }
 
 // Карточка из полей формы. value(имя поля) — текст из поля. Пробелы по краям убираются, пустые необязательные
@@ -180,27 +181,27 @@ export function canMove(decks, id, parent) {
 // Если что-то не так — бросает ошибку с понятным текстом.
 export function parseDeckFile(text) {
   let json;
-  try { json = JSON.parse(text); } catch (e) { throw new Error('Не получается прочитать: это не JSON.'); }
-  if (json && json.app === 'SayatSays') throw new Error('Это резервная копия, а не колоды. Её открывают кнопкой «Восстановить из копии».');
+  try { json = JSON.parse(text); } catch (e) { throw new Error(t('Не получается прочитать: это не JSON.')); }
+  if (json && json.app === 'SayatSays') throw new Error(t('Это резервная копия, а не колоды. Её открывают кнопкой «Восстановить из копии».'));
   const list = Array.isArray(json) ? json
     : (json && Array.isArray(json.decks)) ? json.decks
     : (json && typeof json.id === 'string' && Array.isArray(json.cards)) ? [json]
     : null;
-  if (!list) throw new Error('Колод не нашлось. Нужен файл в формате decks.json: { "decks": [ … ] }.');
-  if (!list.length) throw new Error('В файле нет ни одной колоды.');
+  if (!list) throw new Error(t('Колод не нашлось. Нужен файл в формате decks.json: { "decks": [ … ] }.'));
+  if (!list.length) throw new Error(t('В файле нет ни одной колоды.'));
   list.forEach((d, i) => {
-    const where = (d && typeof d.name === 'string' && d.name) ? 'Колода «' + d.name + '»' : 'Колода №' + (i + 1);
-    if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error(where + ': это не колода.');
-    if (typeof d.id !== 'string' || !d.id.trim()) throw new Error(where + ': нет id.');
-    if (typeof d.name !== 'string' || !d.name.trim()) throw new Error(where + ': нет названия (name).');
-    if (!DECK_TYPES.includes(d.type)) throw new Error(where + ': неизвестный тип «' + d.type + '». Бывают: ' + DECK_TYPES.join(', ') + '.');
-    if (d.cards != null && !Array.isArray(d.cards)) throw new Error(where + ': cards должно быть списком.');
+    const where = (d && typeof d.name === 'string' && d.name) ? t('Колода «{deck}»', { deck: d.name }) : t('Колода №{n}', { n: i + 1 });
+    if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error(where + ': ' + t('это не колода.'));
+    if (typeof d.id !== 'string' || !d.id.trim()) throw new Error(where + ': ' + t('нет id.'));
+    if (typeof d.name !== 'string' || !d.name.trim()) throw new Error(where + ': ' + t('нет названия (name).'));
+    if (!DECK_TYPES.includes(d.type)) throw new Error(where + ': ' + t('неизвестный тип «{type}». Бывают: {types}.', { type: d.type, types: DECK_TYPES.join(', ') }));
+    if (d.cards != null && !Array.isArray(d.cards)) throw new Error(where + ': ' + t('cards должно быть списком.'));
     (d.cards || []).forEach((c, j) => {
-      if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error(where + ': карточка №' + (j + 1) + ' — не объект.');
+      if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error(where + ': ' + t('карточка №{n} — не объект.', { n: j + 1 }));
       const problem = cardProblem(d.type, c);
       if (problem) {
         const label = cardLabel(d.type, c);
-        throw new Error(where + ', карточка №' + (j + 1) + (label ? ' («' + label + '»)' : '') + ': ' + problem + '.');
+        throw new Error(where + ', ' + (label ? t('карточка №{n} («{label}»)', { n: j + 1, label }) : t('карточка №{n}', { n: j + 1 })) + ': ' + problem + '.');
       }
     });
   });
@@ -238,8 +239,8 @@ export function mergeDecks(current, incoming) {
     const cards = (raw.cards || []).map(c => (c.id != null && c.id !== '') ? { ...c, id: String(c.id) } : { ...c, id: contentId(c) });
     const cur = next[raw.id];
     if (cur && typeOf(cur) !== raw.type) {
-      throw new Error('Колода «' + cur.name + '» (id ' + cur.id + ') уже есть, и у неё тип ' + typeOf(cur) + ', а в тексте — ' + raw.type +
-        '. Карточки другого типа в неё не добавить: поменяй тип или придумай новой колоде другой id.');
+      throw new Error(t('Колода «{deck}» (id {id}) уже есть, и у неё тип {type}, а в тексте — {other}. Карточки другого типа в неё не добавить: поменяй тип или придумай новой колоде другой id.',
+        { deck: cur.name, id: cur.id, type: typeOf(cur), other: raw.type }));
     }
     const parentOk = raw.parent && raw.parent !== raw.id && (current[raw.parent] || inFile.has(raw.parent));
     const base = cur || { ...raw, parent: parentOk ? raw.parent : null, order: raw.order != null ? raw.order : ++maxOrder, cards: [] };

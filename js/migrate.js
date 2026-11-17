@@ -8,12 +8,13 @@
 import { createEmptyCard, Rating, State } from '../vendor/ts-fsrs.mjs';
 import { makeScheduler, toStored } from './scheduler.js';
 import { dayStart } from './streak.js';
+import { t } from './i18n.js';
 
 // Превращает содержимое файлов в записи для хранилищ базы (см. описание хранилищ в db.js).
 // progressFile = null — только колоды: без прогресса и без истории дней.
 export function legacyToRecords(decksFile, progressFile = null) {
-  if (!decksFile || !Array.isArray(decksFile.decks)) throw new Error('decks.json: нет списка колод (decks).');
-  if (progressFile != null && progressFile.algorithm !== 'sm2-binary') throw new Error('progress-sm2.json: незнакомый формат.');
+  if (!decksFile || !Array.isArray(decksFile.decks)) throw new Error(t('decks.json: нет списка колод (decks).'));
+  if (progressFile != null && progressFile.algorithm !== 'sm2-binary') throw new Error(t('progress-sm2.json: незнакомый формат.'));
   progressFile = progressFile || {};
 
   const decks = decksFile.decks.map(d => ({ ...d, cards: (d.cards || []).map(c => ({ ...c })) }));
