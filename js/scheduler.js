@@ -11,6 +11,7 @@
 
 import { fsrs, generatorParameters, createEmptyCard, Rating, State } from '../vendor/ts-fsrs.mjs';
 import { dayIndex } from './streak.js';
+import { t } from './i18n.js';
 
 export { Rating, State };
 
@@ -80,7 +81,7 @@ export const remembered = rating => rating !== Rating.Again;
 // При одинаковых f и now результат всегда один и тот же, поэтому подписи под кнопками (preview)
 // совпадают с тем, что получится после ответа.
 export function review(scheduler, f, rating, now) {
-  if (!ANSWERS.includes(rating)) throw new Error('Неизвестная оценка ответа: ' + rating);
+  if (!ANSWERS.includes(rating)) throw new Error(t('Неизвестная оценка ответа: {r}', { r: rating }));
   const { card, log } = scheduler.next(cardOf(f, now), new Date(now), rating);
   return { next: toStored(card), log: logToStored(log) };
 }
@@ -93,16 +94,16 @@ export function preview(scheduler, f, now) {
   return out;
 }
 
-// «10 мин», «3 ч», «4 дн», «2 мес», «1 г» — подпись под кнопкой.
+// «10 мин», «3 ч», «4 дн», «2 мес», «1 г» — подпись под кнопкой (по-английски «10 min», «3 h», «4 d», «2 mo», «1 y»).
 export function formatInterval(ms) {
   const min = Math.max(1, Math.round(ms / 60e3));
-  if (min < 60) return min + ' мин';
+  if (min < 60) return min + ' ' + t('мин');
   const h = Math.round(ms / 3600e3);
-  if (h < 24) return h + ' ч';
+  if (h < 24) return h + ' ' + t('ч');
   const d = Math.round(ms / 864e5);
-  if (d < 31) return d + ' дн';
-  if (d < 365) return Math.round(d / 30.4) + ' мес';
-  return Math.round(d / 365) + ' г';
+  if (d < 31) return d + ' ' + t('дн');
+  if (d < 365) return Math.round(d / 30.4) + ' ' + t('мес');
+  return Math.round(d / 365) + ' ' + t('г');
 }
 
 export const isNew = f => !f || f.state === State.New;

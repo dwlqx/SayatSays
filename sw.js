@@ -5,7 +5,7 @@
 // Браузер заметит, что sw.js изменился, скачает файлы в новый кэш, и приложение покажет
 // плашку «Доступно обновление». Пока не нажмёшь «Обновить», работает старая версия.
 
-const VERSION = 5;
+const VERSION = 7;
 const CACHE = 'sayatsays-v' + VERSION;
 
 // Всё, что нужно приложению. Тест tests/sw.test.js проверяет, что список полный и все файлы существуют.
@@ -20,6 +20,7 @@ const FILES = [
   './js/config.js',
   './js/db.js',
   './js/decks.js',
+  './js/i18n.js',
   './js/migrate.js',
   './js/push.js',
   './js/scheduler.js',
@@ -42,8 +43,7 @@ const FILES = [
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
   './icons/icon-maskable-512.png',
-  './data/decks.json',
-  './data/progress-sm2.json'
+  './data/decks.json'
 ];
 
 // Установка: скачиваем все файлы в новый кэш.
@@ -149,7 +149,19 @@ function countToday(data, today) {
   return n;
 }
 
-// Прочитать из базы, что на сегодня: { n: карточек, done: день уже засчитан }. null — базы на устройстве нет.
+// Язык уведомления — как в приложении (настройка «Язык», см. js/i18n.js). Нет настройки — русский:
+// так было у всех, кто пользовался приложением до английской версии.
+function langOf(prefs) {
+  const l = prefs && prefs.lang;
+  if (l === 'en' || l === 'ru') return l;
+  if (l === 'auto') {
+    const first = String(((self.navigator && self.navigator.languages) || [])[0] || (self.navigator && self.navigator.language) || '').toLowerCase();
+    return /^(ru|kk|uk|be|ky)\b/.test(first) ? 'ru' : 'en';
+  }
+  return 'ru';
+}
+
+// Прочитать из базы, что на сегодня: { n: карточек, done: день уже засчитан, lang: язык }. null — базы на устройстве нет.
 function readToday(now) {
   const today = dayIndex(now);
   return new Promise((resolve, reject) => {
@@ -166,7 +178,7 @@ function readToday(now) {
         ask('cardState', tx.objectStore('cardState').getAll());
         ask('day', tx.objectStore('stats').get(today));
         ask('prefs', tx.objectStore('settings').get('prefs'));
-        tx.oncomplete = () => { db.close(); resolve({ n: countToday(got, today), done: !!(got.day && got.day.done) }); };
+        tx.oncomplete = () => { db.close(); resolve({ n: countToday(got, today), done: !!(got.day && got.day.done), lang: langOf(got.prefs) }); };
         tx.onerror = () => { db.close(); reject(tx.error); };
       } catch (e) { db.close(); reject(e); }
     };
@@ -184,9 +196,18 @@ function plural(n, one, few, many) {
 
 // Текст уведомления. info = null — базу прочитать не удалось.
 function reminderText(info) {
+  if (info && info.lang === 'en') return reminderTextEn(info);
   if (!info) return { title: 'Пора повторить карточки', body: 'Загляни в приложение: там видно, что на сегодня.' };
   const n = info.n, cards = n + ' ' + plural(n, 'карточка', 'карточки', 'карточек');
   if (n === 0) return { title: 'На сегодня всё повторено', body: 'Можно отдыхать.' };
   if (info.done) return { title: 'Цель на сегодня выполнена', body: 'Ещё ' + cards + ' — если захочешь.' };
   return { title: cards + ' ' + plural(n, 'ждёт', 'ждут', 'ждут') + ' повторения', body: '' };
+}
+
+// То же по-английски.
+function reminderTextEn(info) {
+  const n = info.n, cards = n + ' ' + (n === 1 ? 'card' : 'cards');
+  if (n === 0) return { title: 'All reviewed for today', body: 'Time to rest.' };
+  if (info.done) return { title: 'Today’s goal is done', body: cards + ' more — if you like.' };
+  return { title: cards + ' ' + (n === 1 ? 'is' : 'are') + ' waiting for review', body: '' };
 }

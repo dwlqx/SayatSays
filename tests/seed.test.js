@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { freshDB, loadLegacy } from './helpers.js';
-import { seedIfNeeded } from '../js/migrate.js';
+import { seedIfNeeded, migrateToFsrs } from '../js/migrate.js';
 import { streakInfo } from '../js/streak.js';
 
 test('первый запуск: 13 колод, 242 карточки, 80 карточек с прогрессом', async () => {
@@ -64,5 +64,19 @@ test('второй запуск ничего не загружает, даже �
   assert.equal((await db.getAll('cardState')).length, 0, 'вместе с колодами удаляется и прогресс');
   assert.equal(await seedIfNeeded(db, loadLegacy), false);
   assert.equal((await db.getAll('decks')).length, 0);
+  db.close();
+});
+
+test('первый запуск у нового человека: колоды есть, чужого прогресса и дней нет', async () => {
+  const db = await freshDB();
+  const onlyDecks = async () => ({ decks: (await loadLegacy()).decks, progress: null }); // как loadStarterDecks в app.js
+  assert.equal(await seedIfNeeded(db, onlyDecks), true);
+  assert.equal((await db.getAll('decks')).length, 13);
+  assert.equal((await db.getAll('cardState')).length, 0);
+  assert.equal((await db.getAll('stats')).length, 0);
+  assert.equal(streakInfo({}).streak, 0);
+  // Переводить на FSRS нечего — и снимка «до FSRS» нет, кнопки «Скачать копию до перехода на FSRS» не будет.
+  assert.equal(await migrateToFsrs(db), 0);
+  assert.equal(await db.get('snapshots', 'before-fsrs'), undefined);
   db.close();
 });

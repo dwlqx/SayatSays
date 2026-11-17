@@ -3,11 +3,14 @@
 // Как устроены напоминания целиком:
 //   1. Здесь телефон подписывается на push. Подписка — адрес этого телефона у сервера push (у iPhone это Apple)
 //      и ключи, которыми шифруется сообщение.
-//   2. Рома копирует подписку в GitHub Secrets (PUSH_SUBSCRIPTION).
+//   2. Владелец копии проекта на GitHub копирует подписку в GitHub Secrets (PUSH_SUBSCRIPTION).
+//      Поэтому напоминания приходят только владельцу: у сайта dwlqx.github.io/SayatSays это Рома.
+//      Остальным доступно число на иконке — для него GitHub не нужен (badgeStatus, enableBadge ниже).
 //   3. GitHub Actions по расписанию (.github/workflows/reminder.yml) отправляет на этот адрес push (tools/send-push.mjs).
 //   4. Телефон будит sw.js: тот сам считает карточки на сегодня и показывает уведомление.
 
 import { VAPID_PUBLIC_KEY } from './config.js';
+import { t } from './i18n.js';
 
 // Ключ записан в base64url (буквы, цифры, «-» и «_»), а браузеру он нужен байтами.
 export function keyToBytes(b64url) {
@@ -52,8 +55,8 @@ function sameKey(sub) {
 // fresh = true — выбросить старую подписку и сделать новую (если GitHub пишет, что подписка устарела).
 export async function enablePush(fresh = false) {
   const permission = await Notification.requestPermission();
-  if (permission === 'denied') throw new Error('Уведомления запрещены. Включи их: Настройки iPhone → Уведомления → SayatSays.');
-  if (permission !== 'granted') throw new Error('Без разрешения на уведомления напоминания не придут.');
+  if (permission === 'denied') throw new Error(t('Уведомления запрещены. Включи их: Настройки iPhone → Уведомления → SayatSays.'));
+  if (permission !== 'granted') throw new Error(t('Без разрешения на уведомления напоминания не придут.'));
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (sub && (fresh || !sameKey(sub))) { await sub.unsubscribe(); sub = null; }
@@ -67,6 +70,29 @@ export async function testReminder() {
   const reg = await navigator.serviceWorker.ready;
   reg.active.postMessage('test-reminder');
 }
+
+// Репозиторий на GitHub, из которого открыт сайт. На GitHub Pages адрес сайта — https://<владелец>.github.io/<репозиторий>/,
+// поэтому у копии проекта (форка) ссылки на секреты и инструкции ведут в её собственный репозиторий.
+export function repoFromLocation(hostname, pathname) {
+  const owner = (String(hostname).match(/^([a-z0-9-]+)\.github\.io$/i) || [])[1];
+  const repo = String(pathname).split('/')[1];
+  return owner && repo ? 'https://github.com/' + owner + '/' + repo : 'https://github.com/dwlqx/SayatSays';
+}
+
+// Число на иконке без напоминаний. iPhone показывает его, только если разрешены уведомления,
+// но присылать сами уведомления для этого не нужно.
+//   'install'     — открыто в браузере, а не с экрана «Домой»;
+//   'unsupported' — устройство не умеет показывать число на иконке;
+//   'ask'         — можно попросить разрешение;  'on' — работает;  'denied' — уведомления запрещены.
+export function badgeStatus() {
+  if (!isStandalone()) return 'install';
+  if (!('setAppBadge' in navigator) || !('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'granted') return 'on';
+  if (Notification.permission === 'denied') return 'denied';
+  return 'ask';
+}
+// Попросить разрешение. Вызывать прямо из нажатия на кнопку, как и enablePush.
+export const enableBadge = () => Notification.requestPermission();
 
 // Число на иконке приложения; 0 — убрать. На iPhone работает, когда уведомления разрешены.
 export function setBadge(n) {

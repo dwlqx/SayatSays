@@ -16,7 +16,7 @@ export const THEMES = [
   { id: 'graphite', name: 'Графит' },
   { id: 'ash', name: 'Пепел' },
   { id: 'nebula', name: 'Туманность' },
-  { id: 'tush', name: 'Тушь' },
+  { id: 'tush', name: 'Смерть' }, // id остался от первого названия, «Тушь»: он уже записан в настройках
   { id: 'wormwood', name: 'Полынь' },
   { id: 'deep', name: 'Глубина' },
   { id: 'garnet', name: 'Гранат' }

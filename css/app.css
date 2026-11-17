@@ -129,7 +129,8 @@
   --r:1; --hair:1px;
   color-scheme:dark;
 }
-/* Тушь: самая тёмная и простая. Всё в оттенках серого — точки, числа, кнопки; без теней, только тонкие линии. */
+/* Смерть (id tush — первое название было «Тушь»): самая тёмная и простая. Всё в оттенках серого — точки, числа,
+   кнопки; без теней, только тонкие линии. */
 :root[data-theme="tush"],[data-swatch="tush"]{
   --bg:#000000; --surface:#0B0B0B; --surface2:#070707; --ink:#CFCFCF; --muted:#7E7E7E; --line:#1C1C1C;
   --kz:#B0B0B0; --en:#8F8F8F; --qa:#D2D2D2;
@@ -443,3 +444,9 @@ body:has(#update-bar) #app:not(.is-study){padding-bottom:100px} /* чтобы п
 .stats-foot{margin-top:24px}
 /* Запасной путь, если копирование не сработало: текст в поле, уже выделенный. */
 .sheet .copy-area{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;min-height:140px;margin-top:12px}
+
+/* ---------- новое: настройки для всех ---------- */
+.help-links{display:flex;flex-wrap:wrap;gap:0 18px;margin-top:10px}
+.help-links .link{padding-left:0}
+.push-sub.owner{margin-top:14px}
+.push-sub.owner summary{font-weight:500;color:var(--muted)}

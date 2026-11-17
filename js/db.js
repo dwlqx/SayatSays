@@ -20,6 +20,8 @@
 // Эту же базу читает sw.js, когда приходит напоминание (decks, cardState, stats за сегодня, settings 'prefs').
 // Если поменяешь, как там хранятся данные, — поправь и sw.js (тест tests/push.test.js подскажет).
 
+import { t } from './i18n.js';
+
 export const DB_NAME = 'sayatsays';
 export const DB_VERSION = 2;
 // Хранилища, которые входят в резервную копию.
@@ -34,7 +36,7 @@ const promisify = request => new Promise((resolve, reject) => {
 // version можно указать в тестах, чтобы создать базу старой версии и проверить обновление.
 export function openDB(factory = globalThis.indexedDB, name = DB_NAME, version = DB_VERSION) {
   return new Promise((resolve, reject) => {
-    if (!factory) { reject(new Error('Этот браузер не умеет хранить данные (нет IndexedDB).')); return; }
+    if (!factory) { reject(new Error(t('Этот браузер не умеет хранить данные (нет IndexedDB).'))); return; }
     const request = factory.open(name, version);
     // Вызывается, когда базы ещё нет или у неё версия меньше нужной: здесь создаётся и обновляется структура.
     // Шаги идут по порядку: база версии 1 получит только шаг 2, новая база — оба. Данные при этом не трогаются.
@@ -81,7 +83,7 @@ export class DB {
       for (const name of stores) s[name] = tx.objectStore(name);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error || new Error('Запись прервана.'));
+      tx.onabort = () => reject(tx.error || new Error(t('Запись прервана.')));
       try { fn(s); } catch (e) { reject(e); tx.abort(); }
     });
   }

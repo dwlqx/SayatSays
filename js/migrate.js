@@ -1,16 +1,21 @@
 // Перенос старых данных в формат базы.
-//   1. Первый запуск: взять исходные данные из артефакта «Запомни» (data/decks.json и data/progress-sm2.json)
-//      и положить в базу. Сами файлы не меняются.
+//   1. Первый запуск: взять колоды (data/decks.json) и положить в базу. Сами файлы не меняются.
+//      data/progress-sm2.json — прогресс Ромы из артефакта «Запомни». Его загрузили один раз, на первом запуске
+//      у Ромы (задача 1); у остальных приложение начинается с колодами, но без чужого прогресса (см. app.js).
+//      Функции ниже умеют и то и другое: прогресс передаётся, только если он есть.
 //   2. Переход с SM-2 на FSRS: один раз, со снимком всей базы перед ним.
 
 import { createEmptyCard, Rating, State } from '../vendor/ts-fsrs.mjs';
 import { makeScheduler, toStored } from './scheduler.js';
 import { dayStart } from './streak.js';
+import { t } from './i18n.js';
 
-// Превращает содержимое двух файлов в записи для хранилищ базы (см. описание хранилищ в db.js).
-export function legacyToRecords(decksFile, progressFile) {
-  if (!decksFile || !Array.isArray(decksFile.decks)) throw new Error('decks.json: нет списка колод (decks).');
-  if (!progressFile || progressFile.algorithm !== 'sm2-binary') throw new Error('progress-sm2.json: незнакомый формат.');
+// Превращает содержимое файлов в записи для хранилищ базы (см. описание хранилищ в db.js).
+// progressFile = null — только колоды: без прогресса и без истории дней.
+export function legacyToRecords(decksFile, progressFile = null) {
+  if (!decksFile || !Array.isArray(decksFile.decks)) throw new Error(t('decks.json: нет списка колод (decks).'));
+  if (progressFile != null && progressFile.algorithm !== 'sm2-binary') throw new Error(t('progress-sm2.json: незнакомый формат.'));
+  progressFile = progressFile || {};
 
   const decks = decksFile.decks.map(d => ({ ...d, cards: (d.cards || []).map(c => ({ ...c })) }));
 
@@ -34,8 +39,8 @@ export function legacyToRecords(decksFile, progressFile) {
 
 // Первый запуск: если база ещё ни разу не заполнялась, загружает исходные данные
 // и кладёт их в базу одной транзакцией. Возвращает true, если загрузка была.
-//   load() — функция, которая возвращает { decks, progress }: содержимое двух файлов
-//            (в браузере их скачивает fetch, в тестах — читает Node).
+//   load() — функция, которая возвращает { decks, progress }: содержимое data/decks.json и data/progress-sm2.json
+//            (в браузере их скачивает fetch, в тестах — читает Node). progress может быть null — тогда только колоды.
 // Отметка meta.seededAt нужна, чтобы колоды не вернулись, если когда-нибудь удалить их все.
 export async function seedIfNeeded(db, load, now = Date.now()) {
   const meta = await db.get('settings', 'meta');
