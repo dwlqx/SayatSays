@@ -7,7 +7,7 @@ import { THEMES, THEME_KEY, DEFAULT_THEME } from '../js/themes.js';
 const css = readFileSync(new URL('../css/app.css', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const TOKENS = ['--bg', '--surface', '--surface2', '--ink', '--muted', '--line', '--kz', '--en', '--qa', '--good', '--bad',
-  '--focus', '--on-good', '--accent', '--on-accent', '--shadow', '--r', '--hair'];
+  '--focus', '--on-good', '--accent', '--on-accent', '--btn', '--on-btn', '--shadow', '--r', '--hair'];
 
 // Переменные темы из css/app.css: блок, в заголовке которого есть [data-swatch="id"].
 function themeVars(id) {
@@ -54,7 +54,7 @@ test('новые темы: текст и кнопки хорошо читают�
   const rules = [['--ink', '--bg', 7], ['--ink', '--surface', 7], ['--muted', '--bg', 4.5], ['--muted', '--surface', 4.5],
     ['--kz', '--bg', 4.5], ['--kz', '--surface', 4.5], ['--en', '--bg', 4.5], ['--en', '--surface', 4.5],
     ['--qa', '--bg', 4.5], ['--qa', '--surface', 4.5], ['--bad', '--surface', 4.5], ['--good', '--surface', 4.5],
-    ['--on-good', '--good', 4.5], ['--on-accent', '--accent', 4.5], ['--accent', '--bg', 3]];
+    ['--on-good', '--good', 4.5], ['--on-accent', '--accent', 4.5], ['--accent', '--bg', 3], ['--on-btn', '--btn', 4.5]];
   for (const t of THEMES.filter(x => !['auto', 'light', 'dark'].includes(x.id))) {
     const { vars } = themeVars(t.id);
     for (const [a, b, min] of rules) {
@@ -70,4 +70,21 @@ test('index.html ставит тему до первой отрисовки, т�
   assert.ok(script > 0, 'в <head> читается ' + THEME_KEY);
   assert.ok(script > head.indexOf('css/app.css'), 'после стилей');
   assert.ok(script < head.indexOf('js/app.js'), 'раньше app.js');
+});
+
+test('у светлой и тёмной большие кнопки — как раньше: цвет текста на цвете фона', () => {
+  for (const id of ['light', 'dark', 'paper', 'mint', 'sky', 'graphite', 'ash', 'nebula']) {
+    const { vars } = themeVars(id);
+    assert.equal(vars['--btn'], vars['--ink'], id);
+    assert.equal(vars['--on-btn'], vars['--bg'], id);
+  }
+});
+
+test('Бетон — тёмный; Тушь — только оттенки серого, даже точки колод и кнопки', () => {
+  assert.equal(themeVars('concrete').vars.scheme, 'dark');
+  const { vars } = themeVars('tush');
+  const gray = hex => hex.slice(1, 3) === hex.slice(3, 5) && hex.slice(3, 5) === hex.slice(5, 7);
+  for (const k of ['--bg', '--surface', '--ink', '--muted', '--line', '--kz', '--en', '--qa', '--good', '--bad', '--accent', '--btn', '--on-btn']) {
+    assert.ok(gray(vars[k]), 'Тушь: ' + k + ' = ' + vars[k] + ' — не серый');
+  }
 });

@@ -869,7 +869,8 @@ function applyTheme(id) {
 function themesHTML() {
   return THEMES.map(t => '<button type="button" class="theme-sw" data-theme-id="' + t.id + '" aria-pressed="' + (S.settings.theme === t.id) + '">' +
     '<span class="pv" data-swatch="' + t.id + '" aria-hidden="true"><span class="pv-card"><i></i><i></i></span>' +
-    '<span class="pv-dots"><i style="background:var(--kz)"></i><i style="background:var(--en)"></i><i style="background:var(--qa)"></i></span></span>' +
+    '<span class="pv-dots"><i style="background:var(--kz)"></i><i style="background:var(--en)"></i><i style="background:var(--qa)"></i></span>' +
+    '<span class="pv-btn"></span></span>' +
     '<span class="nm">' + esc(t.name) + '</span></button>').join('');
 }
 
