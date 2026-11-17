@@ -80,11 +80,11 @@ test('у светлой и тёмной большие кнопки — как �
   }
 });
 
-test('Бетон — тёмный; Тушь — только оттенки серого, даже точки колод и кнопки', () => {
+test('Бетон — тёмный; Смерть — только оттенки серого, даже точки колод и кнопки', () => {
   assert.equal(themeVars('concrete').vars.scheme, 'dark');
   const { vars } = themeVars('tush');
   const gray = hex => hex.slice(1, 3) === hex.slice(3, 5) && hex.slice(3, 5) === hex.slice(5, 7);
   for (const k of ['--bg', '--surface', '--ink', '--muted', '--line', '--kz', '--en', '--qa', '--good', '--bad', '--accent', '--btn', '--on-btn']) {
-    assert.ok(gray(vars[k]), 'Тушь: ' + k + ' = ' + vars[k] + ' — не серый');
+    assert.ok(gray(vars[k]), 'Смерть: ' + k + ' = ' + vars[k] + ' — не серый');
   }
 });

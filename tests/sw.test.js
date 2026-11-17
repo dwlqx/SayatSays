@@ -27,6 +27,7 @@ test('в списке sw.js есть все файлы приложения', ()
   for (const dir of ['css', 'js', 'fonts', 'data', 'vendor']) {
     for (const name of readdirSync(new URL(dir + '/', root))) {
       if (name.endsWith('.txt')) continue; // тексты лицензий офлайн не нужны
+      if (name === 'progress-sm2.json') continue; // прогресс Ромы из артефакта: приложение его больше не загружает
       need.push('./' + dir + '/' + name);
     }
   }
@@ -64,4 +65,9 @@ test('иконки без прозрачности (iOS заливает про�
     assert.equal(colorType, 2, f + ': ожидался PNG без альфа-канала');
     assert.ok(!b.includes('tRNS'), f + ': есть прозрачный цвет (tRNS)');
   }
+});
+
+test('новым людям не загружается прогресс Ромы', () => {
+  assert.ok(!read('js/app.js').includes("'./data/progress-sm2.json'"), 'app.js не скачивает data/progress-sm2.json');
+  assert.ok(!listed.includes('./data/progress-sm2.json'), 'и в кэше его нет');
 });

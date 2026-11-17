@@ -5,7 +5,7 @@
 // Браузер заметит, что sw.js изменился, скачает файлы в новый кэш, и приложение покажет
 // плашку «Доступно обновление». Пока не нажмёшь «Обновить», работает старая версия.
 
-const VERSION = 5;
+const VERSION = 6;
 const CACHE = 'sayatsays-v' + VERSION;
 
 // Всё, что нужно приложению. Тест tests/sw.test.js проверяет, что список полный и все файлы существуют.
@@ -42,8 +42,7 @@ const FILES = [
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
   './icons/icon-maskable-512.png',
-  './data/decks.json',
-  './data/progress-sm2.json'
+  './data/decks.json'
 ];
 
 // Установка: скачиваем все файлы в новый кэш.

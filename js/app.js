@@ -15,7 +15,8 @@ import { parsePasted, claudeInstructions } from './claude.js';
 import { answersByDay, goodShare, forecast, totals } from './stats.js';
 import { THEMES, DEFAULT_THEME, isTheme, THEME_KEY } from './themes.js';
 import { startSession, nextItem, dropItem, leftInSession, answerCard, undoAnswer } from './study.js';
-import { pushStatus, currentSubscription, subscriptionText, enablePush, testReminder, setBadge } from './push.js';
+import { pushStatus, currentSubscription, subscriptionText, enablePush, testReminder, setBadge,
+  repoFromLocation, badgeStatus, enableBadge } from './push.js';
 import { VERSION } from './version.js';
 
 /* ---------- helpers ---------- */
@@ -83,14 +84,12 @@ function saved(promise) {
 function putDeck(d) { S.decks = { ...S.decks, [d.id]: d }; return saved(S.db.write(['decks'], s => s.decks.put(d))); }
 function putDay(rec) { S.days[rec.day] = rec; return saved(S.db.write(['stats'], s => s.stats.put(rec))); }
 
-async function loadLegacyFiles() {
-  const get = async url => {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('Не удалось загрузить ' + url + ' (ошибка ' + r.status + ').');
-    return r.json();
-  };
-  const [decks, progress] = await Promise.all([get('./data/decks.json'), get('./data/progress-sm2.json')]);
-  return { decks, progress };
+// Первый запуск: стартовые колоды из data/decks.json. Прогресс (data/progress-sm2.json) не загружаем:
+// это история Ромы из артефакта, у него она уже в базе, а у других людей приложение должно начинаться с нуля.
+async function loadStarterDecks() {
+  const r = await fetch('./data/decks.json');
+  if (!r.ok) throw new Error('Не удалось загрузить ./data/decks.json (ошибка ' + r.status + ').');
+  return { decks: await r.json(), progress: null };
 }
 
 async function init() {
@@ -101,7 +100,7 @@ async function init() {
   let seeded = false, migrated = 0;
   try {
     S.db = await openDB();
-    seeded = await seedIfNeeded(S.db, loadLegacyFiles);
+    seeded = await seedIfNeeded(S.db, loadStarterDecks);
     // Просим браузер не удалять данные при нехватке места. Браузер может и отказать — это не ошибка.
     if (seeded && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     // Один раз: перевести прогресс с SM-2 на FSRS (перед этим сохраняется снимок всей базы).
@@ -114,7 +113,9 @@ async function init() {
   }
   render();
   if (migrated && !seeded) toast('Расписание теперь считает FSRS. Копия данных до перехода — в Настройки → Данные.');
+  // Первый раз: в Safari на iPhone — как установить на экран «Домой», иначе — короткое знакомство.
   if (S.ready && inIosSafari && !S.meta.installHintAt) showInstallHint();
+  else if (S.ready && seeded && !S.meta.welcomeAt) showWelcome();
 }
 
 /* ---------- rendering ---------- */
@@ -638,7 +639,6 @@ function openSettings() {
     '<h3 class="sheet-sec">Тема</h3>' +
     '<div class="themes" data-themes>' + themesHTML() + '</div>' +
     '<p class="help">Тема меняется сразу.</p>' +
-    '<h3 class="sheet-sec">Напоминания</h3>' +
     '<div data-push-box></div>' +
     '<h3 class="sheet-sec">Данные</h3>' +
     '<p class="help">Колоды и прогресс хранятся только на этом устройстве. Время от времени делай резервную копию и сохраняй её в «Файлы» или в облако.</p>' +
@@ -651,7 +651,8 @@ function openSettings() {
     '<p class="help" style="margin-top:12px">Новые колоды — от Claude или из файла — добавляются кнопкой «Добавить» на главном экране.</p>' +
     (S.hasFsrsSnapshot ? '<p class="help">Копия до перехода на FSRS — данные в том виде, какими они были до обновления. Её можно восстановить кнопкой «Восстановить из копии».</p>' : '') +
     '<input type="file" accept=".json,application/json" hidden data-file>' +
-    (inIosSafari ? '<button type="button" class="link" style="padding-left:0" data-install-hint>Как установить на экран «Домой»</button>' : '') +
+    '<div class="help-links"><button type="button" class="link" data-welcome>Как пользоваться</button>' +
+    (inIosSafari ? '<button type="button" class="link" data-install-hint>Как установить на экран «Домой»</button>' : '') + '</div>' +
     '<p class="version">SayatSays, версия ' + VERSION + '</p>',
     form => {
       const F = n => form.elements.namedItem(n);
@@ -673,6 +674,7 @@ function openSettings() {
   let fileMode = null;
   form.addEventListener('click', ev => {
     if (ev.target.closest('[data-install-hint]')) { showInstallHint(); return; }
+    if (ev.target.closest('[data-welcome]')) { showWelcome(); return; }
     const th = ev.target.closest('[data-theme-id]'); if (th) { chooseTheme(th.dataset.themeId, form); return; }
     const p = ev.target.closest('[data-push]'); if (p) { pushAction(p.dataset.push, pushBox); return; }
     const b = ev.target.closest('[data-data]'); if (!b) return;
@@ -694,29 +696,49 @@ function openSettings() {
 function updateBadge() { if (S.ready) setBadge(todayTotal(S, dayIndex())); }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updateBadge(); });
 
-const SECRETS_URL = 'https://github.com/dwlqx/SayatSays/settings/secrets/actions';
+// Репозиторий, из которого открыт сайт (у копии проекта — её собственный), и ссылки в нём.
+const REPO_URL = repoFromLocation(location.hostname, location.pathname);
+const SECRETS_URL = REPO_URL + '/settings/secrets/actions';
+const REMINDERS_DOC_URL = REPO_URL + '/blob/main/docs/DEVELOPMENT.md#напоминания';
 
-// Раздел «Напоминания» в настройках. justEnabled — только что подписались: сразу раскрыть инструкцию.
+// Раздел в настройках. Напоминания по расписанию присылает GitHub, и настроить их может только владелец
+// копии проекта на GitHub. Поэтому:
+//   — если этот телефон уже подписан на напоминания (так у Ромы), раздел «Напоминания» — как раньше;
+//   — иначе раздел «Число на иконке» (работает у всех), а напоминания — свёрнутым пунктом для владельцев копий.
+// justEnabled — только что подписались: сразу раскрыть инструкцию.
 async function fillPush(box, justEnabled) {
   const status = pushStatus();
-  if (status === 'install') {
-    box.innerHTML = '<p class="help">Напоминания работают только в приложении с экрана «Домой».' +
-      (inIosSafari ? ' Как его установить — кнопка внизу настроек.' : '') + '</p>';
-    return;
-  }
-  if (status === 'unsupported') { box.innerHTML = '<p class="help">Здесь напоминания не работают. На iPhone нужна iOS 16.4 или новее.</p>'; return; }
-  if (status === 'denied') {
-    box.innerHTML = '<p class="help">Уведомления запрещены. Включи их: Настройки iPhone → Уведомления → SayatSays, потом открой приложение заново.</p>';
-    return;
-  }
   let sub = null;
-  try { sub = await currentSubscription(); } catch (e) { console.error(e); }
-  if (!sub) {
-    box.innerHTML = '<p class="help">Каждый день придёт уведомление, сколько карточек ждут повторения, а на иконке появится их число.</p>' +
-      '<div class="data-btns"><button type="button" class="btn dark" data-push="enable">Включить напоминания</button></div>';
-    return;
+  if (status !== 'install' && status !== 'unsupported') {
+    try { sub = await currentSubscription(); } catch (e) { console.error(e); }
   }
-  box.innerHTML = '<p class="help">Напоминания включены на этом телефоне. Время задаётся на GitHub, в файле .github/workflows/reminder.yml.</p>' +
+  box.innerHTML = sub ? '<h3 class="sheet-sec">Напоминания</h3>' + subscribedHTML(sub, justEnabled)
+    : '<h3 class="sheet-sec">Число на иконке</h3>' + badgeHTML() + (status === 'ready' ? ownerRemindersHTML() : '');
+}
+
+function badgeHTML() {
+  const st = badgeStatus();
+  if (st === 'install') return '<p class="help">Когда откроешь SayatSays с экрана «Домой», на иконке можно будет показывать, сколько карточек на сегодня.</p>';
+  if (st === 'unsupported') return '<p class="help">Это устройство не умеет показывать число на иконке. На iPhone нужна iOS 16.4 или новее.</p>';
+  if (st === 'on') return '<p class="help">Включено: на иконке — сколько карточек на сегодня, как на кнопке «Повторить всё».</p>';
+  if (st === 'denied') return '<p class="help">Уведомления для SayatSays запрещены, поэтому iPhone не показывает число на иконке. ' +
+    'Включить: Настройки iPhone → Уведомления → SayatSays → разреши уведомления и «Наклейки».</p>';
+  return '<p class="help">Сколько карточек на сегодня — прямо на иконке приложения. iPhone покажет число, только если разрешить уведомления; ' +
+    'присылать уведомления приложение не будет.</p>' +
+    '<div class="data-btns"><button type="button" class="btn ghost" data-push="badge">Показывать число на иконке</button></div>';
+}
+
+// Свёрнутый пункт для тех, у кого своя копия проекта на GitHub.
+function ownerRemindersHTML() {
+  return '<details class="push-sub owner"><summary>Напоминания по расписанию</summary>' +
+    '<p class="help">Утром и вечером присылает GitHub из репозитория проекта. Поэтому они работают только у того, кто сделал ' +
+    'свою копию проекта на GitHub и настроил ключи: как это сделать — <a href="' + REMINDERS_DOC_URL + '" target="_blank" rel="noopener">в инструкции для разработчиков</a>. ' +
+    'Если копия твоя — включай:</p>' +
+    '<div class="data-btns"><button type="button" class="btn ghost" data-push="enable">Включить напоминания</button></div></details>';
+}
+
+function subscribedHTML(sub, justEnabled) {
+  return '<p class="help">Напоминания включены на этом телефоне. Время задаётся на GitHub, в файле .github/workflows/reminder.yml.</p>' +
     '<details class="push-sub"' + (justEnabled ? ' open' : '') + '><summary>Подписка для GitHub</summary>' +
       '<ol class="steps">' +
         '<li>Нажми «Скопировать».</li>' +
@@ -736,7 +758,12 @@ async function fillPush(box, justEnabled) {
 }
 
 function pushAction(act, box) {
-  if (act === 'enable' || act === 'renew') {
+  if (act === 'badge') {
+    // Тоже прямо из нажатия: иначе iPhone не спросит разрешение.
+    enableBadge()
+      .then(p => { fillPush(box); updateBadge(); toast(p === 'granted' ? 'Готово: на иконке будет число карточек на сегодня.' : 'Без разрешения iPhone не покажет число на иконке.'); })
+      .catch(e => { console.error(e); toast('Не получилось: ' + ((e && e.message) || e)); });
+  } else if (act === 'enable' || act === 'renew') {
     if (act === 'renew' && !confirm('Старая подписка перестанет работать, и секрет PUSH_SUBSCRIPTION на GitHub нужно будет обновить. Создать новую?')) return;
     // enablePush вызываем сразу из нажатия: иначе iPhone не покажет вопрос о разрешении.
     enablePush(act === 'renew')
@@ -1016,6 +1043,26 @@ function showInstallHint() {
     '<p class="help">Важно: у Safari и у приложения на экране «Домой» разные данные, прогресс отсюда сам туда не перейдёт. ' +
     'Если ты уже занимался здесь, в Safari, сделай резервную копию (Настройки → Данные) и восстанови её в приложении.</p>' +
     '<div class="row"><button class="btn dark">Понятно</button></div>',
+    () => closeSheet());
+}
+
+// Знакомство с приложением: само показывается один раз на новом устройстве, потом — из настроек («Как пользоваться»).
+function showWelcome() {
+  S.meta = { ...S.meta, key: 'meta', welcomeAt: Date.now() };
+  saved(S.db.write(['settings'], s => s.settings.put(S.meta)));
+  openSheet('<h2>Привет!</h2>' +
+    '<p class="lead">SayatSays — карточки для интервального повторения. Приложение само решает, какую карточку когда показать, ' +
+      'чтобы ты повторял её как раз перед тем, как забудешь.</p>' +
+    '<ol class="steps">' +
+      '<li>Для начала здесь есть колоды: казахский (слова и термины для экзамена) и английский для NUET. ' +
+        'Не нужны — открой колоду и нажми «Удалить колоду» внизу.</li>' +
+      '<li>«Повторить всё» — занятие по всем колодам. Подумай, переверни карточку и честно ответь «Не знал» или «Знал». ' +
+        'Можно смахнуть: влево — не знал, вправо — знал.</li>' +
+      '<li>Свои карточки — кнопка «Добавить» на главном экране. Проще всего попросить Claude: там есть инструкция для него.</li>' +
+      '<li>Всё хранится только на этом устройстве. Время от времени делай резервную копию: Настройки → Данные.</li>' +
+    '</ol>' +
+    '<p class="help">В настройках — темы, четыре кнопки ответа вместо двух и число на иконке, значок со столбиками — статистика.</p>' +
+    '<div class="row"><button class="btn dark">Начать</button></div>',
     () => closeSheet());
 }
 

@@ -11,7 +11,7 @@ import { todayTotal } from '../js/decks.js';
 import { dayIndex, dayStart } from '../js/streak.js';
 import { openDB, STORES } from '../js/db.js';
 import { seedIfNeeded, migrateToFsrs } from '../js/migrate.js';
-import { keyToBytes } from '../js/push.js';
+import { keyToBytes, repoFromLocation } from '../js/push.js';
 import { VAPID_PUBLIC_KEY, VAPID_SUBJECT } from '../js/config.js';
 
 const HOUR = 3600e3;
@@ -188,4 +188,10 @@ test('публичный VAPID-ключ — настоящий ключ P-256, �
   // Бросит ошибку, если точка не лежит на кривой P-256.
   createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: b64(bytes.slice(1, 33)), y: b64(bytes.slice(33)) }, format: 'jwk' });
   assert.equal(VAPID_SUBJECT, 'https://dwlqx.github.io/SayatSays/');
+});
+
+test('ссылки на GitHub ведут в репозиторий, из которого открыт сайт', () => {
+  assert.equal(repoFromLocation('dwlqx.github.io', '/SayatSays/'), 'https://github.com/dwlqx/SayatSays');
+  assert.equal(repoFromLocation('someone.github.io', '/SayatSays/index.html'), 'https://github.com/someone/SayatSays', 'копия проекта');
+  assert.equal(repoFromLocation('localhost', '/'), 'https://github.com/dwlqx/SayatSays', 'на компьютере — исходный репозиторий');
 });
